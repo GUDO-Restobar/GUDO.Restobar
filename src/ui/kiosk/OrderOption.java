@@ -1,5 +1,17 @@
 package ui.kiosk;
 
-public class OrderOption {
-    
+import java.awt.*;
+import javax.swing.*;
+
+public class OrderOption extends JPanel {
+    public OrderOption() {
+        setLayout(new BorderLayout());
+        setBackground(new Color(246, 246, 246));
+
+        ImageIcon LogoImage = new ImageIcon("public/assets/logo/logo-horizontal-transparent.png");
+        Image logoImage = LogoImage.getImage().getScaledInstance(500, 121, Image.SCALE_SMOOTH);
+        JLabel logoLabel = new JLabel(new ImageIcon(logoImage));
+
+        add(logoLabel, BorderLayout.NORTH);
+    }
 }
