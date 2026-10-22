@@ -1,0 +1,13 @@
+*.class
+*.jar
+*.log
+/bin/
+/out/
+/build/
+/target/
+/dist/
+/nbproject/private/
+.idea/
+*.iml
+.vscode/
+.DS_Store
