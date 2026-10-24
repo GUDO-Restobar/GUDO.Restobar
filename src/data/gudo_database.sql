@@ -18,42 +18,50 @@ CREATE TABLE MENU_ITEM (
   unitPrice DECIMAL(10,2) NOT NULL,
   stockQuantity INT NOT NULL,
   availabilityStatus VARCHAR(20) DEFAULT 'Available'
+    CHECK (availabilityStatus IN ('Available', 'Not Available'))
 );
 
 CREATE TABLE CUSTOMER_ORDER (
   orderID INT AUTO_INCREMENT PRIMARY KEY,
-  orderDate DATE,
-  orderTime TIME,
-  orderType VARCHAR(20),
-  totalAmount DECIMAL(10,2),
-  paymentStatus VARCHAR(20) DEFAULT 'Pending',
+  orderDate DATE NOT NULL,
+  orderTime TIME NOT NULL,
+  orderType VARCHAR(20) NOT NULL
+    CHECK (orderType IN ('Dine-in', 'Takeout')),
+  totalAmount DECIMAL(10,2)
+    CONSTRAINT chk_positive CHECK (totalAmount > 0.0),
+  paymentStatus VARCHAR(20) DEFAULT 'Pending'
+    CHECK (paymentStatus IN ('Pending', 'Paid', 'Cancelled')),
   orderStatus VARCHAR(20) DEFAULT 'Preparing'
+    CHECK (orderStatus IN  ('Preparing', 'Served', 'Completed'))
 );
 
 CREATE TABLE ORDER_DETAIL (
   detailID INT AUTO_INCREMENT PRIMARY KEY,
   orderID INT NOT NULL,
   itemID INT NOT NULL,
-  quantity INT,
+  quantity INT
+    CONSTRAINT chk_positive_quantity CHECK (quantity >= 1),
   price DECIMAL(10,2),
-  subTotal DECIMAL(10,2),
+  subTotal DECIMAL(10,2)
+    CONSTRAINT chk_positive_subTotal CHECK (subTotal > 0.0),
 
     FOREIGN KEY (orderID) REFERENCES customer_order(orderID),
     FOREIGN KEY (itemID) REFERENCES menu_item(itemID)
 );
 
 CREATE TABLE PAYMENT (
-  paymentID INT PRIMARY KEY,
+  paymentID INT AUTO_INCREMENT PRIMARY KEY,
   orderID INT NOT NULL,
-  method VARCHAR(20),
-  status VARCHAR(20) DEFAULT 'Pending',
+  method VARCHAR(20)
+    CHECK (method IN ('Cash', 'Cashless')),
+  transactionStatus VARCHAR(20) DEFAULT 'Pending'
+    CHECK (transactionStatus IN ('Pending', 'Successful')),
   amount INT,
   paymentDate DATE,
 
     FOREIGN KEY (orderID) REFERENCES customer_order(orderID)
 );
 
-SHOW TABLES;
 /*
 MENU_ITEM primary key chu4
 - 100+ --> meals
@@ -123,14 +131,18 @@ VALUES
 
 
 INSERT INTO PAYMENT
-    (paymentID, orderID,  method,       status,             amount,       paymentDate)
+    (orderID,  method,       transactionStatus,   amount,       paymentDate)
 VALUES
-    (1,         1,        'Cash',       'Completed',        308.00,       '2026-10-20'),
-    (2,         2,        'Cash',       'Completed',        297.00,       '2026-10-21'),
-    (3,         3,        'Cash',       'Completed',        458.00,       '2026-10-22'),
-    (4,         4,        'Cash',       'Completed',        294.00,       '2026-10-22'),
-    (5,         5,        'Cash',       'Completed',        208.00,       '2026-10-23'),
-    (6,         6,        'Cash',       'Completed',        413.00,       '2026-10-23'),
-    (7,         7,        'Cash',       'Completed',        313.00,       '2026-10-24');;
+    (1,        'Cash',       'Successful',        308.00,       '2026-10-20'),
+    (2,        'Cashless',   'Successful',        297.00,       '2026-10-21'),
+    (3,        'Cash',       'Successful',        458.00,       '2026-10-22'),
+    (4,        'Cash',       'Successful',        294.00,       '2026-10-22'),
+    (5,        'Cashless',   'Successful',        208.00,       '2026-10-23'),
+    (6,        'Cashless',   'Successful',        413.00,       '2026-10-23'),
+    (7,        'Cash',       'Successful',        313.00,       '2026-10-24');
 
-
+SHOW TABLES;
+SELECT * FROM MENU_ITEM;
+SELECT * FROM CUSTOMER_ORDER;
+SELECT * FROM ORDER_DETAIL;
+SELECT * FROM PAYMENT;
