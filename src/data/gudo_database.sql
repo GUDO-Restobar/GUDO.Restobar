@@ -1,5 +1,8 @@
 -- SQLBook: Code
 -- Active: 1790556296860@@127.0.0.1@3306@gudorestobardb
+
+
+-- Task 4: Create database
 CREATE DATABASE IF NOT EXISTS gudorestobardb;
 
 USE gudorestobardb;
@@ -14,7 +17,8 @@ DROP TABLE MENU_ITEM;
 CREATE TABLE MENU_ITEM (
   itemID INT PRIMARY KEY,
   itemName VARCHAR(200) NOT NULL,
-  category VARCHAR(20) NOT NULL,
+  category VARCHAR(20) NOT NULL
+    CHECK (category IN ('Meals', 'Snacks', 'Drinks')),
   unitPrice DECIMAL(10,2) NOT NULL,
   stockQuantity INT NOT NULL,
   availabilityStatus VARCHAR(20) DEFAULT 'Available'
@@ -28,7 +32,7 @@ CREATE TABLE CUSTOMER_ORDER (
   orderType VARCHAR(20) NOT NULL
     CHECK (orderType IN ('Dine-in', 'Takeout')),
   totalAmount DECIMAL(10,2)
-    CONSTRAINT chk_positive CHECK (totalAmount > 0.0),
+    CONSTRAINT chk_positive CHECK (totalAmount > 0.00),
   paymentStatus VARCHAR(20) DEFAULT 'Pending'
     CHECK (paymentStatus IN ('Pending', 'Paid', 'Cancelled')),
   orderStatus VARCHAR(20) DEFAULT 'Preparing'
@@ -43,7 +47,7 @@ CREATE TABLE ORDER_DETAIL (
     CONSTRAINT chk_positive_quantity CHECK (quantity >= 1),
   price DECIMAL(10,2),
   subTotal DECIMAL(10,2)
-    CONSTRAINT chk_positive_subTotal CHECK (subTotal > 0.0),
+    CONSTRAINT chk_positive_subTotal CHECK (subTotal > 0.00),
 
     FOREIGN KEY (orderID) REFERENCES customer_order(orderID),
     FOREIGN KEY (itemID) REFERENCES menu_item(itemID)
@@ -61,6 +65,8 @@ CREATE TABLE PAYMENT (
 
     FOREIGN KEY (orderID) REFERENCES customer_order(orderID)
 );
+
+-- Task 5: Populate tables with sufficient records
 
 /*
 MENU_ITEM primary key chu4
@@ -141,6 +147,8 @@ VALUES
     (6,        'Cashless',   'Successful',        413.00,       '2026-10-23'),
     (7,        'Cash',       'Successful',        313.00,       '2026-10-24');
 
+
+-- Instructor Checkpoint
 SHOW TABLES;
 SELECT * FROM MENU_ITEM;
 SELECT * FROM CUSTOMER_ORDER;
