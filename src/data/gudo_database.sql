@@ -30,14 +30,6 @@ CREATE TABLE CUSTOMER_ORDER (
   orderStatus VARCHAR(20) DEFAULT 'Preparing'
 );
 
-CREATE TABLE SALES_MANAGER (
-  managerID INT PRIMARY KEY,
-  lastName VARCHAR(30) UNIQUE,
-  firstName VARCHAR(30),
-  email VARCHAR(100) UNIQUE,
-  contactNumber VARCHAR(15) UNIQUE
-);
-
 CREATE TABLE ORDER_DETAIL (
   detailID INT AUTO_INCREMENT PRIMARY KEY,
   orderID INT NOT NULL,
@@ -53,19 +45,15 @@ CREATE TABLE ORDER_DETAIL (
 CREATE TABLE PAYMENT (
   paymentID INT PRIMARY KEY,
   orderID INT NOT NULL,
-  managerID INT NOT NULL,
   method VARCHAR(20),
   status VARCHAR(20) DEFAULT 'Pending',
   amount INT,
   paymentDate DATE,
 
-    FOREIGN KEY (orderID) REFERENCES customer_order(orderID),
-    FOREIGN KEY (managerID) REFERENCES  sales_manager(managerID)
+    FOREIGN KEY (orderID) REFERENCES customer_order(orderID)
 );
 
 SHOW TABLES;
-SELECT * FROM MENU_ITEM;
-SELECT * FROM SALES_MANAGER;
 /*
 MENU_ITEM primary key chu4
 - 100+ --> meals
@@ -94,9 +82,55 @@ INSERT INTO MENU_ITEM
   (304,     'Sam Smoothie',                       'Drinks',   159.00,     10,             'Available'),
   (305,     'Java Milkshake',                     'Drinks',   199.99,     10,             'Available');
 
-INSERT INTO SALES_MANAGER
-(managerID, lastName,     firstName,    email,                    contactNumber)
+INSERT INTO CUSTOMER_ORDER
+    (orderDate,     orderTime,    orderType,  totalAmount,  paymentStatus,  orderStatus)
 VALUES
-(100,       'Samantha',   'Alejandro',  'alejantha@gmail.com',    '09561234567');
+    ('2026-10-20',  '11:30:00',   'Dine-in',  308.00,       'Paid',         'Completed'),
+    ('2026-10-21',  '13:15:00',   'Takeout',  297.00,       'Paid',         'Completed'),
+    ('2026-10-22',  '18:45:00',   'Dine-in',  458.00,       'Paid',         'Preparing'),
+    ('2026-10-22',  '12:10:00',   'Takeout',  268.00,       'Paid',         'Completed'),
+    ('2026-10-23',  '09:45:00',   'Dine-in',  184.00,       'Paid',         'Completed'),
+    ('2026-10-23',  '14:20:00',   'Takeout',  348.00,       'Paid',         'Preparing'),
+    ('2026-10-24',  '11:05:00',   'Dine-in',  259.00,       'Paid',         'Preparing');
+
+
+INSERT INTO ORDER_DETAIL
+    (orderID, itemID,   quantity, price,    subTotal)
+VALUES
+    (1,       101,      2,        79.00,    158.00),
+    (1,       301,      2,        75.00,    150.00),
+
+    (2,       104,      1,        179.00,   179.00),
+    (2,       201,      2,        59.00,    118.00),
+
+    (3,       106,      1,        299.00,   299.00),
+    (3,       304,      1,        159.00,   159.00),
+
+    (4,       102,      1,        109.00,   109.00),
+    (4,       202,      1,        110.00,   110.00),
+    (4,       301,      1,        75.00,    75.00),
+
+    (5,       103,      1,        149.00,   149.00),
+    (5,       201,      1,        59.00,    59.00),
+
+    (6,       105,      1,        189.00,   189.00),
+    (6,       203,      1,        149.00,   149.00),
+    (6,       301,      1,        75.00,    75.00),
+
+    (7,       104,      1,        179.00,   179.00),
+    (7,       201,      1,        59.00,    59.00),
+    (7,       301,      1,        75.00,    75.00);
+
+
+INSERT INTO PAYMENT
+    (paymentID, orderID,  method,       status,             amount,       paymentDate)
+VALUES
+    (1,         1,        'Cash',       'Completed',        308.00,       '2026-10-20'),
+    (2,         2,        'Cash',       'Completed',        297.00,       '2026-10-21'),
+    (3,         3,        'Cash',       'Completed',        458.00,       '2026-10-22'),
+    (4,         4,        'Cash',       'Completed',        294.00,       '2026-10-22'),
+    (5,         5,        'Cash',       'Completed',        208.00,       '2026-10-23'),
+    (6,         6,        'Cash',       'Completed',        413.00,       '2026-10-23'),
+    (7,         7,        'Cash',       'Completed',        313.00,       '2026-10-24');;
 
 
