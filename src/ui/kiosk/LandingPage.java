@@ -2,8 +2,7 @@ package ui.kiosk;
 
 import java.awt.*;
 import javax.swing.*;
-import util.FadingBanner;
-import util.FontLoader;
+import util.*;
 
 
 public class LandingPage extends JFrame {
