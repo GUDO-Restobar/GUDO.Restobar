@@ -13,5 +13,7 @@ public class MenuPage extends JPanel {
         JLabel logoLabel = new JLabel(new ImageIcon(logoImage));
 
         add(logoLabel, BorderLayout.NORTH);
+        add(logoLabel, BorderLayout.SOUTH);
+        
     }
 }
