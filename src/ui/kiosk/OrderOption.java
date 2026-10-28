@@ -13,5 +13,6 @@ public class OrderOption extends JPanel {
         JLabel logoLabel = new JLabel(new ImageIcon(logoImage));
 
         add(logoLabel, BorderLayout.NORTH);
+        
     }
 }

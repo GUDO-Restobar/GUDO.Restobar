@@ -2,8 +2,7 @@ package ui.kiosk;
 
 import java.awt.*;
 import javax.swing.*;
-import util.FadingBanner;
-import util.FontLoader;
+import util.*;
 
 
 public class LandingPage extends JFrame {
@@ -132,7 +131,7 @@ public class LandingPage extends JFrame {
         landingPanel.add(buttonPanel, BorderLayout.SOUTH);
 
         screenPanel.add(landingPanel, LANDING_SCREEN);
-        screenPanel.add(new OrderOption(), ORDER_OPTION_SCREEN);
+        screenPanel.add(new MenuPage(), ORDER_OPTION_SCREEN);
         setContentPane(screenPanel);
     }
 }

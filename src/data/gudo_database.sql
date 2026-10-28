@@ -69,7 +69,7 @@ CREATE TABLE PAYMENT (
 -- Task 5: Populate tables with sufficient records
 
 /*
-MENU_ITEM primary key chu4
+MENU_ITEM primary key categorization
 - 100+ --> meals
 - 200+ --> snacks
 - 300+ --> drinks
