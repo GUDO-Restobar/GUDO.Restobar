@@ -19,26 +19,26 @@ public class MenuPage extends JPanel {
     private static final String TRACK = "public/assets/scrollbar/scroll-track.png";
 
     private static final Product[] MEALS = {
-        new Product("Alejandro Balls", 79, IMG + "alejandro-balls.png"),
-        new Product("Peanut Butterbonia Pancit Canton", 109, IMG + "peanut-butterbonia-pancit-canton.png"),
-        new Product(".Swing Sisig", 149, IMG + ".swing-sisig.png"),
-        new Product("Quiburger", 179, IMG + "quiburger.png"),
-        new Product("Object Oriented Pasta", 189, IMG + "object-oriented-pasta.png"),
-        new Product("Lechong Gudo", 299, IMG + "lechong-gudo.png")
+        new Product(101, "Alejandro Balls", 79, IMG + "alejandro-balls.png"),
+        new Product(102, "Peanut Butterbonia Pancit Canton", 109, IMG + "peanut-butterbonia-pancit-canton.png"),
+        new Product(103, ".Swing Sisig", 149, IMG + ".swing-sisig.png"),
+        new Product(104, "Quiburger", 179, IMG + "quiburger.png"),
+        new Product(105, "Object Oriented Pasta", 189, IMG + "object-oriented-pasta.png"),
+        new Product(106, "Lechong Gudo", 299, IMG + "lechong-gudo.png")
     };
     private static final Product[] SNACKS = {
-        new Product("LinkedHash Brown", 59, IMG + "linkedhash-brown.png"),
-        new Product("4-Pillar Fries", 110, IMG + "4-pillar-fries.png"),
-        new Product("Chili con Claude", 149, IMG + "chili-con-claude.png"),
-        new Product("JNuggets", 189, IMG + "jnuggets.png"),
-        new Product("Snhackathon Package", 399, IMG + "snhackathon-package.png")
+        new Product(201, "LinkedHash Brown", 59, IMG + "linkedhash-brown.png"),
+        new Product(202, "4-Pillar Fries", 110, IMG + "4-pillar-fries.png"),
+        new Product(203, "Chili con Claude", 149, IMG + "chili-con-claude.png"),
+        new Product(204, "JNuggets", 189, IMG + "jnuggets.png"),
+        new Product(205, "Snhackathon Package", 399, IMG + "snhackathon-package.png")
     };
     private static final Product[] DRINKS = {
-        new Product("'Jandro Cola", 75, IMG + "jandro-cola.png"),
-        new Product("San Gudo Light", 89, IMG + "san-gudo-light.png"),
-        new Product("San Gudo", 100, IMG + "san-gudo.png"),
-        new Product("Sam Smoothie", 159, IMG + "sam-smoothie.png"),
-        new Product("Java Milkshake", 199, IMG + "java-milkshake.png")
+        new Product(301, "'Jandro Cola", 75, IMG + "jandro-cola.png"),
+        new Product(302, "San Gudo Light", 89, IMG + "san-gudo-light.png"),
+        new Product(303, "San Gudo", 100, IMG + "san-gudo.png"),
+        new Product(304, "Sam Smoothie", 159, IMG + "sam-smoothie.png"),
+        new Product(305, "Java Milkshake", 199, IMG + "java-milkshake.png")
     };
 
     private final Font bold = loadFont("Montserrat/static/Montserrat-Bold.ttf");
