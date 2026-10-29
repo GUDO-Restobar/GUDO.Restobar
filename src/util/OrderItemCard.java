@@ -4,6 +4,7 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.IOException;
+import java.util.function.IntConsumer;
 import javax.swing.*;
 
 public class OrderItemCard extends JPanel {
@@ -39,15 +40,38 @@ public class OrderItemCard extends JPanel {
     /** Runs on the second press of the trash icon. */
     private Runnable onRemove = () -> {};
 
-    public OrderItemCard(String name,
-                         String imagePath,
-                         String quantity,
-                         String price,
+    private final Product product;
+    private final IntConsumer onQuantityChange;
+    private int quantity;
+    private JLabel quantityLabel;
+    private JLabel priceLabel;
+
+    /**
+     * @param product          the product this card shows
+     * @param quantity         how many of it are in the order
+     * @param onQuantityChange called with the new quantity after the + or - circle is pressed
+     * @param onEdit           runs when "Edit Meal" is pressed
+     * @param onRemove         runs on the second press of the trash icon
+     */
+    public OrderItemCard(Product product,
+                         int quantity,
+                         IntConsumer onQuantityChange,
+                         Runnable onEdit,
+                         Runnable onRemove) {
+        this(product, quantity, new String[0], new String[0], onQuantityChange, onEdit, onRemove);
+    }
+
+    public OrderItemCard(Product product,
+                         int quantity,
                          String[] leftAddOns,
                          String[] rightAddOns,
+                         IntConsumer onQuantityChange,
                          Runnable onEdit,
                          Runnable onRemove) {
 
+        this.product = product;
+        this.quantity = Math.max(1, quantity);
+        this.onQuantityChange = onQuantityChange != null ? onQuantityChange : q -> {};
         Runnable edit = onEdit != null ? onEdit : () -> {};
         this.onRemove = onRemove != null ? onRemove : () -> {};
 
@@ -56,12 +80,36 @@ public class OrderItemCard extends JPanel {
         setBorder(BorderFactory.createEmptyBorder(16, 18, 16 + SHADOW, 20));
         setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        add(buildImage(imagePath), BorderLayout.WEST);
-        add(buildInfo(name, quantity, leftAddOns, rightAddOns, edit), BorderLayout.CENTER);
-        add(buildRightColumn(price), BorderLayout.EAST);
+        add(buildImage(product.getImagePath()), BorderLayout.WEST);
+        add(buildInfo(product.getName(), leftAddOns, rightAddOns, edit), BorderLayout.CENTER);
+        add(buildRightColumn(), BorderLayout.EAST);
 
         setPreferredSize(new Dimension(760, CARD_HEIGHT));
         setMaximumSize(new Dimension(Integer.MAX_VALUE, CARD_HEIGHT));
+    }
+
+    public Product getProduct() {
+        return product;
+    }
+
+    public int getQuantity() {
+        return quantity;
+    }
+
+    /** Applies a +1 / -1 change. The quantity never drops below 1; the trash icon removes the item. */
+    private void changeQuantity(int change) {
+        int updated = Math.max(1, quantity + change);
+        if (updated == quantity) {
+            return;
+        }
+        quantity = updated;
+        quantityLabel.setText(String.valueOf(quantity));
+        priceLabel.setText(formatPrice(product.getPrice() * quantity));
+        onQuantityChange.accept(quantity);
+    }
+
+    private static String formatPrice(double price) {
+        return "\u20B1" + String.format("%,.2f", price);
     }
 
     /** Lets the owner decide what "remove" means for this specific card. */
@@ -75,18 +123,18 @@ public class OrderItemCard extends JPanel {
         return image;
     }
 
-    private JPanel buildInfo(String name, String quantity,
+    private JPanel buildInfo(String name,
                              String[] leftAddOns, String[] rightAddOns,
                              Runnable onEdit) {
         JPanel info = new JPanel(new BorderLayout(0, 8));
         info.setOpaque(false);
-        info.add(buildHeader(name, quantity), BorderLayout.NORTH);
+        info.add(buildHeader(name), BorderLayout.NORTH);
         info.add(buildAddOns(leftAddOns, rightAddOns), BorderLayout.CENTER);
         info.add(buildEditRow(onEdit), BorderLayout.SOUTH);
         return info;
     }
 
-    private JPanel buildHeader(String name, String quantity) {
+    private JPanel buildHeader(String name) {
         JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         header.setOpaque(false);
 
@@ -94,17 +142,22 @@ public class OrderItemCard extends JPanel {
         nameLabel.setFont(bold.deriveFont(20f));
         nameLabel.setForeground(DARK_TEXT);
 
-        JLabel quantityLabel = new JLabel(quantity);
+        quantityLabel = new JLabel(String.valueOf(quantity));
         quantityLabel.setFont(bold.deriveFont(20f));
         quantityLabel.setForeground(ORANGE);
 
+        CircleButton minus = new CircleButton(false);
+        minus.addActionListener(e -> changeQuantity(-1));
+        CircleButton plus = new CircleButton(true);
+        plus.addActionListener(e -> changeQuantity(1));
+
         header.add(nameLabel);
         header.add(Box.createHorizontalStrut(14));
-        header.add(new CircleButton(false));
+        header.add(minus);
         header.add(Box.createHorizontalStrut(5));
         header.add(quantityLabel);
         header.add(Box.createHorizontalStrut(5));
-        header.add(new CircleButton(true));
+        header.add(plus);
         return header;
     }
 
@@ -156,11 +209,11 @@ public class OrderItemCard extends JPanel {
         return row;
     }
 
-    private JPanel buildRightColumn(String price) {
+    private JPanel buildRightColumn() {
         JPanel column = new JPanel(new BorderLayout());
         column.setOpaque(false);
 
-        JLabel priceLabel = new JLabel(price);
+        priceLabel = new JLabel(formatPrice(product.getPrice() * quantity));
         priceLabel.setFont(bold.deriveFont(15f));
         priceLabel.setForeground(ORANGE);
 
@@ -245,7 +298,7 @@ public class OrderItemCard extends JPanel {
         return new ImageIcon(image);
     }
 
-    /** Small orange circle holding a white minus or plus. No behaviour yet. */
+    /** Small orange circle holding a white minus or plus. */
     private static class CircleButton extends JButton {
         private final boolean plus;
         private boolean hover;

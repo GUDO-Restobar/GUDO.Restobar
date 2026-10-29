@@ -11,6 +11,8 @@ public class LandingPage extends JFrame {
     private static final String MENU_SCREEN = "menu_page";
     private static final String ADD_ORDER_SCREEN = "add-order";
     private static final String ORDER_ADDED_SCREEN = "order-added";
+    private static final String EDIT_ORDER_SCREEN = "edit-order";
+    private static final String ORDER_EDITED_SCREEN = "order-edited";
     private static final String CHECKOUT_SCREEN = "checkout";
     private static final String START_OVER_SCREEN = "start-over";
     private static final String PAYMENT_OPTION_SCREEN = "payment-option";
@@ -22,6 +24,8 @@ public class LandingPage extends JFrame {
     private MenuPage menuPage;
     private AddOrder addOrderPage;
     private OrderAdded orderAddedPage;
+    private EditOrder editOrderPage;
+    private OrderEdited orderEditedPage;
 
     public LandingPage() {
 
@@ -150,11 +154,16 @@ public class LandingPage extends JFrame {
             () -> cardLayout.show(screenPanel, START_OVER_SCREEN)
         );
         screenPanel.add(menuPage, MENU_SCREEN);
+
+        // Any change to the cart (Menu, Add Order, Checkout, Edit Order) updates the Menu total.
+        cart.addChangeListener(() -> menuPage.setTotal(cart.getTotal()));
+
         screenPanel.add(new CheckoutPage(
             cart,
             () -> cardLayout.show(screenPanel, MENU_SCREEN),
             () -> cardLayout.show(screenPanel, START_OVER_SCREEN),
-            () -> cardLayout.show(screenPanel, PAYMENT_OPTION_SCREEN)
+            () -> cardLayout.show(screenPanel, PAYMENT_OPTION_SCREEN),
+            this::showEditOrder
         ), CHECKOUT_SCREEN);
         screenPanel.add(new StartOver(
             () -> {
@@ -213,6 +222,36 @@ public class LandingPage extends JFrame {
         );
         screenPanel.add(orderAddedPage, ORDER_ADDED_SCREEN);
         cardLayout.show(screenPanel, ORDER_ADDED_SCREEN);
+        screenPanel.revalidate();
+        screenPanel.repaint();
+    }
+
+    /** Opens the Edit Order page for a meal that is already in the order. */
+    private void showEditOrder(Product product) {
+        if (editOrderPage != null) screenPanel.remove(editOrderPage);
+
+        editOrderPage = new EditOrder(
+            product,
+            cart,
+            this::showOrderEdited,
+            () -> cardLayout.show(screenPanel, CHECKOUT_SCREEN)
+        );
+        screenPanel.add(editOrderPage, EDIT_ORDER_SCREEN);
+        cardLayout.show(screenPanel, EDIT_ORDER_SCREEN);
+        screenPanel.revalidate();
+        screenPanel.repaint();
+    }
+
+    /** Shows "Your Cravings has Been Modified" for 5 seconds, then returns to Checkout. */
+    private void showOrderEdited() {
+        if (orderEditedPage != null) screenPanel.remove(orderEditedPage);
+
+        orderEditedPage = new OrderEdited(
+            cart.getTotal(),
+            () -> cardLayout.show(screenPanel, CHECKOUT_SCREEN)
+        );
+        screenPanel.add(orderEditedPage, ORDER_EDITED_SCREEN);
+        cardLayout.show(screenPanel, ORDER_EDITED_SCREEN);
         screenPanel.revalidate();
         screenPanel.repaint();
     }

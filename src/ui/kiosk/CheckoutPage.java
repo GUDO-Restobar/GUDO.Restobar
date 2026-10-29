@@ -3,6 +3,10 @@ package ui.kiosk;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
 import javax.swing.*;
 import util.*;
 
@@ -16,6 +20,7 @@ public class CheckoutPage extends JPanel {
     private static final Color LINE = new Color(200, 200, 200);
 
     private final Cart cart;
+    private final Consumer<Product> onEditItem;
     private final Font bold = loadFont("Montserrat-Bold.ttf");
     private final Font regular = loadFont("Montserrat-Regular.ttf");
 
@@ -28,11 +33,20 @@ public class CheckoutPage extends JPanel {
     private final JLabel totalAmount = new JLabel("\u20B10.00");
 
     public CheckoutPage(Cart cart) {
-        this(cart, null, null, null);
+        this(cart, null, null, null, null);
     }
 
     public CheckoutPage(Cart cart, Runnable onOrderMore, Runnable onStartOver, Runnable onComplete) {
+        this(cart, onOrderMore, onStartOver, onComplete, null);
+    }
+
+    /**
+     * @param onEditItem called with the product whose "Edit Meal" button was pressed
+     */
+    public CheckoutPage(Cart cart, Runnable onOrderMore, Runnable onStartOver,
+                        Runnable onComplete, Consumer<Product> onEditItem) {
         this.cart = cart != null ? cart : new Cart();
+        this.onEditItem = onEditItem != null ? onEditItem : product -> {};
 
         Runnable orderMore = onOrderMore != null ? onOrderMore : () -> {};
         Runnable startOver = onStartOver != null ? onStartOver : () -> {};
@@ -46,48 +60,56 @@ public class CheckoutPage extends JPanel {
         add(buildCenter(), BorderLayout.CENTER);
         add(buildFooter(orderMore, startOver, complete), BorderLayout.SOUTH);
 
-        updateTotal();
-        refreshCenter();
-        addDemoOrder();
+        showCartContents();
     }
 
     @Override
     public void setVisible(boolean visible) {
         super.setVisible(visible);
         if (visible) {
-            updateTotal();
-            refreshCenter();
+            // The cart may have changed on the Menu or Edit Order pages.
+            showCartContents();
         }
     }
 
     private void updateTotal() {
-        totalAmount.setText("\u20B1" + String.format("%.2f", cart.getTotal()));
+        totalAmount.setText("\u20B1" + String.format("%,.2f", cart.getTotal()));
     }
 
-    /**
-     * Temporary sample row so the list can be seen before the cart is wired
-     * up. Delete this call (and this method) when real items are added.
-     */
-    private void addDemoOrder() {
-        addDemoCard();
-        addDemoCard();
-        addDemoCard();
+    /** Rebuilds the list of order cards from whatever is in the cart right now. */
+    private void showCartContents() {
+        itemsPanel.removeAll();
+
+        List<Map.Entry<Product, Integer>> entries = new ArrayList<>(cart.getItems().entrySet());
+        for (Map.Entry<Product, Integer> entry : entries) {
+            addOrderItem(buildCard(entry.getKey(), entry.getValue()));
+        }
+
+        itemsPanel.revalidate();
+        itemsPanel.repaint();
+        updateTotal();
+        refreshCenter();
     }
 
-    private void addDemoCard() {
+    private OrderItemCard buildCard(Product product, int quantity) {
         OrderItemCard card = new OrderItemCard(
-            "Quiburger",
-            "public/assets/menu/quiburger.png",
-            "67",
-            "\u20B1109.00",
-            new String[]{"Extra Rice x67", "Java Rice x1", "Extra Water", "Cutlery"},
-            new String[]{"Alejandro Cola x1", "LinkedHash Brown x1"},
-            () -> {},
+            product,
+            quantity,
+            newQuantity -> {
+                // The + / - circles change the real cart, so the Menu total stays in sync too.
+                cart.setQuantity(product, newQuantity);
+                updateTotal();
+            },
+            () -> onEditItem.accept(product),
             null
         );
         // Each card removes only itself, not the whole list.
-        card.setOnRemove(() -> removeOrderItem(card));
-        addOrderItem(card);
+        card.setOnRemove(() -> {
+            cart.setQuantity(product, 0);
+            removeOrderItem(card);
+            updateTotal();
+        });
+        return card;
     }
 
     public void addOrderItem(JComponent item) {
