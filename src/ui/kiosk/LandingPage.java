@@ -132,10 +132,7 @@ public class LandingPage extends JFrame {
 
         screenPanel.add(landingPanel, LANDING_SCREEN);
         screenPanel.add(new OrderOption(), ORDER_OPTION_SCREEN);
-<<<<<<< HEAD
         screenPanel.add(new MenuPage(null, null, null), "menu_page");
-=======
->>>>>>> ae9e80ad287502062ef844ef3e8f403cb88642b4
         setContentPane(screenPanel);
     }
 }
