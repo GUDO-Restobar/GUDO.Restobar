@@ -131,8 +131,13 @@ public class LandingPage extends JFrame {
         landingPanel.add(buttonPanel, BorderLayout.SOUTH);
 
         screenPanel.add(landingPanel, LANDING_SCREEN);
-        screenPanel.add(new OrderOption(), ORDER_OPTION_SCREEN);
-        screenPanel.add(new MenuPage(null, null, null), "menu_page");
+        screenPanel.add(new CheckoutPage(
+            new Cart(),
+            () -> cardLayout.show(screenPanel, "menu_page"),
+            () -> cardLayout.show(screenPanel, LANDING_SCREEN),
+            null
+        ), ORDER_OPTION_SCREEN);
+
         setContentPane(screenPanel);
     }
 }
