@@ -1,5 +1,6 @@
+-- Active: 1789518258812@@127.0.0.1@3306@gudorestobardb
 -- SQLBook: Code
--- Active: 1790556296860@@127.0.0.1@3306@gudorestobardb\
+-- Active
 
 
 -- Task 4: Create database
@@ -80,29 +81,29 @@ MENU_ITEM primary key categorization
 INSERT INTO MENU_ITEM
   (itemID,  itemName,                             category,   unitPrice,  stockQuantity,  availabilityStatus)
   VALUES
-  (101,     'Alejandro Balls',                    'Meals',    79.00,      10,             'Available'),
-  (102,     'Peanut Butterbonia Pancit Canton',   'Meals',    109.00,     10,             'Available'),
-  (103,     '.Swing Sisig',                       'Meals',    149.00,     10,             'Available'),
-  (104,     'Quiburger',                          'Meals',    179.00,     10,             'Available'),
-  (105,     'Object Oriented Pasta',              'Meals',    189.00,     10,             'Available'),
-  (106,     'Lechong Gudo',                       'Meals',    299.00,     10,             'Available'),
+  (101,     'Alejandro Balls',                    'Meals',    79.00,      20,             'Available'),
+  (102,     'Peanut Butterbonia Pancit Canton',   'Meals',    109.00,     20,             'Available'),
+  (103,     '.Swing Sisig',                       'Meals',    149.00,     20,             'Available'),
+  (104,     'Quiburger',                          'Meals',    179.00,     20,             'Available'),
+  (105,     'Object Oriented Pasta',              'Meals',    189.00,     20,             'Available'),
+  (106,     'Lechong Gudo',                       'Meals',    299.00,     20,             'Available'),
 
-  (201,     'LinkedHash Brown',                   'Snacks',   59.00,      10,             'Available'),
-  (202,     '4-Pillar Fries',                     'Snacks',   110.00,     10,             'Available'),
-  (203,     'Chili con Claude',                   'Snacks',   149.00,     10,             'Available'),
-  (204,     'JNuggets',                           'Snacks',   189.00,     10,             'Available'),
-  (205,     'Snhackathon Package',                'Snacks',   399.00,     10,             'Available'),
+  (201,     'LinkedHash Brown',                   'Snacks',   59.00,      20,             'Available'),
+  (202,     '4-Pillar Fries',                     'Snacks',   110.00,     20,             'Available'),
+  (203,     'Chili con Claude',                   'Snacks',   149.00,     20,             'Available'),
+  (204,     'JNuggets',                           'Snacks',   189.00,     20,             'Available'),
+  (205,     'Snhackathon Package',                'Snacks',   399.00,     20,             'Available'),
 
-  (301,     "'Jandro Cola",                       'Drinks',   75.00,      10,             'Available'),
-  (302,     'San Gudo Light',                     'Drinks',   89.00,      10,             'Available'),
-  (303,     'San Gudo',                           'Drinks',   100.00,     10,             'Available'),
-  (304,     'Sam Smoothie',                       'Drinks',   159.00,     10,             'Available'),
-  (305,     'Java Milkshake',                     'Drinks',   199.99,     10,             'Available'),
+  (301,     "'Jandro Cola",                       'Drinks',   75.00,      20,             'Available'),
+  (302,     'San Gudo Light',                     'Drinks',   89.00,      20,             'Available'),
+  (303,     'San Gudo',                           'Drinks',   100.00,     20,             'Available'),
+  (304,     'Sam Smoothie',                       'Drinks',   159.00,     20,             'Available'),
+  (305,     'Java Milkshake',                     'Drinks',   199.99,     20,             'Available'),
   
-  (401,     'BBQ Sauce',                          'Extras',   20.00,      10,             'Available'),
-  (402,     'Cheese Sauce',                       'Extras',   20.00,      10,             'Available'),
-  (403,     'Extra Rice',                         'Extras',   30.00,      10,             'Available'),
-  (404,     'Java Rice',                          'Extras',   40.00,      10,             'Available');
+  (401,     'BBQ Sauce',                          'Extras',   20.00,      20,             'Available'),
+  (402,     'Cheese Sauce',                       'Extras',   20.00,      20,             'Available'),
+  (403,     'Extra Rice',                         'Extras',   30.00,      20,             'Available'),
+  (404,     'Java Rice',                          'Extras',   40.00,      20,             'Available');
 
 INSERT INTO CUSTOMER_ORDER
     (orderDate,     orderTime,    orderType,    paymentStatus,  orderStatus)

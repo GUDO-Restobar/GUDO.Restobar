@@ -2,7 +2,6 @@ package ui.kiosk;
 
 import java.awt.*;
 import javax.swing.*;
-
 import util.*;
 
 public class PaymentOption extends JPanel {
@@ -95,8 +94,9 @@ public class PaymentOption extends JPanel {
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         button.addActionListener(e -> {
-            OrderSession.setOrderType(paymentType);
-            System.out.println("Selected Order Type: " + paymentType);
+            // The payment method is kept apart from the order type (Dine-in / Takeout).
+            OrderSession.setPaymentMethod(paymentType);
+            System.out.println("Selected Payment Method: " + paymentType);
 
             Component ancestor = button;
             while ((ancestor = ancestor.getParent()) != null) {

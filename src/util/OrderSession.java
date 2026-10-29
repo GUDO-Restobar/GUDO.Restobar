@@ -2,6 +2,7 @@ package util;
 
 public class OrderSession {
     private static String orderType = "Dine-in";
+    private static String paymentMethod = "Cash";
     private static int orderID = -1;
 
     public static void setOrderType(String type) {
@@ -10,6 +11,14 @@ public class OrderSession {
 
     public static String getOrderType() {
         return orderType;
+    }
+
+    public static void setPaymentMethod(String method) {
+        paymentMethod = method;
+    }
+
+    public static String getPaymentMethod() {
+        return paymentMethod;
     }
 
     public static void setOrderID(int id) {
