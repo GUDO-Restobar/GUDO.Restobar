@@ -7,6 +7,8 @@ import java.util.*;
 public class mainView extends JFrame{
 
     private final static Color MAINWHITE = new Color(246, 246, 246);
+    private final static Color MAINORANGE = Color.decode("#EC5E02");
+    private final static ImageIcon LOGO = new ImageIcon("public\\assets\\logo\\gudo-white-logo.png");
 
     private final CardLayout cardLayout = new CardLayout();
     private final JPanel screenPanel = new JPanel(cardLayout);
@@ -24,24 +26,30 @@ public class mainView extends JFrame{
     }
 
     public static JPanel viewRecords() {
-        JPanel view = new JPanel();    
+        JPanel view = new JPanel();
+            view.setLayout(null);    
             view.setBackground(Color.decode("#200E08"));
             view.setOpaque(false);
             view.setSize(1445, 1080);
         
         JPanel orderHistory = new JPanel();
             orderHistory.setBackground(MAINWHITE);
-            orderHistory.setSize(1349, 769);
-            orderHistory.set;
+            orderHistory.setPreferredSize(new Dimension(1349, 769));
+            orderHistory.setBounds(523, 177, 1349, 769);
+            orderHistory.setBorder(BorderFactory.createLineBorder(MAINORANGE, 5));
+
+        view.add(orderHistory);
 
         return view;
     }
     public static JPanel sideBar() {
         JPanel sidebar = new JPanel();
 
-        sidebar.setBackground(Color.decode("#EC5E02"));
-        sidebar.setSize(475, 1080);
-
+            sidebar.setBackground(MAINORANGE);
+            sidebar.setSize(475, 1080);
+        JLabel label = new JLabel();
+            label.setSize(379, 97);
+            label.add(LOGO);
         return sidebar;
     }
 }
