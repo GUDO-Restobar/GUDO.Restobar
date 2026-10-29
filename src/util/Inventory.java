@@ -1,25 +1,32 @@
 package util;
 
+import data.MenuItemDAO;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * In-memory product stock (no database yet).
+ * The kiosk's copy of the stock in the MENU_ITEM table.
  *
- * Every product starts with {@link #DEFAULT_STOCK} pieces. Stock is only
- * deducted when an order is completed ({@link #deduct(Cart)}); until then the
- * items in the cart simply "reserve" part of it (see {@link #getAvailable}).
+ * {@link #refresh()} reads it from MySQL; the stock itself is reduced by
+ * {@code OrderDAO.saveOrder} when an order is completed. Until then, items in
+ * the cart only "reserve" part of the stock (see {@link #getAvailable}).
  */
 public final class Inventory {
-    public static final int DEFAULT_STOCK = 20;
-
     private static final Map<Integer, Integer> STOCK = new HashMap<>();
 
     private Inventory() {}
 
-    /** Pieces of this product that are still in stock. */
+    /** Reloads the stock of every product from the database. */
+    public static synchronized void refresh() throws SQLException {
+        Map<Integer, Integer> latest = MenuItemDAO.loadStock();
+        STOCK.clear();
+        STOCK.putAll(latest);
+    }
+
+    /** Pieces of this product that can still be ordered. */
     public static synchronized int getStock(Product product) {
-        return STOCK.getOrDefault(product.getItemID(), DEFAULT_STOCK);
+        return STOCK.getOrDefault(product.getItemID(), 0);
     }
 
     /** Pieces of this product that are in stock and not yet in the given cart. */
@@ -30,18 +37,5 @@ public final class Inventory {
 
     public static boolean isInStock(Product product) {
         return getStock(product) > 0;
-    }
-
-    /** Removes the ordered quantities from stock. Call once, when the order is completed. */
-    public static synchronized void deduct(Cart cart) {
-        for (Map.Entry<Product, Integer> entry : cart.getItems().entrySet()) {
-            int left = getStock(entry.getKey()) - entry.getValue();
-            STOCK.put(entry.getKey().getItemID(), Math.max(0, left));
-        }
-    }
-
-    /** Puts every product back to the default stock (for testing / a new day). */
-    public static synchronized void resetAll() {
-        STOCK.clear();
     }
 }

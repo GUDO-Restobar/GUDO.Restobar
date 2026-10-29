@@ -2,7 +2,6 @@ package ui.kiosk;
 
 import java.awt.*;
 import javax.swing.*;
-
 import util.*;
 
 public class OrderOption extends JPanel {

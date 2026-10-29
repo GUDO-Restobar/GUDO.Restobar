@@ -2,10 +2,6 @@ package util;
 
 import java.util.*;
 
-/**
- * The customer's order. Doubles as a Prototype: copy() returns an
- * independent cart that can be edited freely without touching this one.
- */
 public class Cart implements Prototype<Cart> {
     private final Map<Product, Integer> items = new LinkedHashMap<>();
     private final List<Runnable> listeners = new ArrayList<>();
@@ -81,6 +77,28 @@ public class Cart implements Prototype<Cart> {
         Cart clone = new Cart();
         clone.items.putAll(items);
         return clone;
+    }
+
+    /**
+     * Lowers every quantity to what is in stock right now and drops items that
+     * ran out. Used when the stock changed while the customer was ordering.
+     */
+    public void trimToStock() {
+        boolean changed = false;
+        for (Iterator<Map.Entry<Product, Integer>> it = items.entrySet().iterator(); it.hasNext(); ) {
+            Map.Entry<Product, Integer> entry = it.next();
+            int stock = Inventory.getStock(entry.getKey());
+            if (stock <= 0) {
+                it.remove();
+                changed = true;
+            } else if (entry.getValue() > stock) {
+                entry.setValue(stock);
+                changed = true;
+            }
+        }
+        if (changed) {
+            fireChanged();
+        }
     }
 
     /** Commits an edited copy back into this cart. */

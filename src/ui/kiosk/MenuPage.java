@@ -4,10 +4,13 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.IOException;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import javax.swing.*;
+import data.MenuItemDAO;
 import util.*;
 
 public class MenuPage extends JPanel {
@@ -20,34 +23,13 @@ public class MenuPage extends JPanel {
     private static final String THUMB = "public/assets/scrollbar/scroll-thumb.png";
     private static final String TRACK = "public/assets/scrollbar/scroll-track.png";
 
-    private static final Product[] MEALS = {
-        new Product(1, "Alejandro Balls", 79, IMG + "alejandro-balls.png"),
-        new Product(2, "Peanut Butterbonia Pancit Canton", 109, IMG + "peanut-butterbonia-pancit-canton.png"),
-        new Product(3, ".Swing Sisig", 149, IMG + ".swing-sisig.png"),
-        new Product(4, "Quiburger", 179, IMG + "quiburger.png"),
-        new Product(5, "Object Oriented Pasta", 189, IMG + "object-oriented-pasta.png"),
-        new Product(6, "Lechong Gudo", 299, IMG + "lechong-gudo.png")
-    };
-    private static final Product[] SNACKS = {
-        new Product(7, "LinkedHash Brown", 59, IMG + "linkedhash-brown.png"),
-        new Product(8, "4-Pillar Fries", 110, IMG + "4-pillar-fries.png"),
-        new Product(9, "Chili con Claude", 149, IMG + "chili-con-claude.png"),
-        new Product(10, "JNuggets", 189, IMG + "jnuggets.png"),
-        new Product(11, "Snhackathon Package", 399, IMG + "snhackathon-package.png")
-    };
-    private static final Product[] DRINKS = {
-        new Product(12, "'Jandro Cola", 75, IMG + "jandro-cola.png"),
-        new Product(13, "San Gudo Light", 89, IMG + "san-gudo-light.png"),
-        new Product(14, "San Gudo", 100, IMG + "san-gudo.png"),
-        new Product(15, "Sam Smoothie", 159, IMG + "sam-smoothie.png"),
-        new Product(16, "Java Milkshake", 199, IMG + "java-milkshake.png")
-    };
-
     private final Font bold = loadFont("Montserrat/static/Montserrat-Bold.ttf");
     private final Consumer<Product> onProductSelected;
     private final Runnable onCheckout, onStartOver;
     private final JPanel[] sections = new JPanel[3];
     private final List<ItemCard> itemCards = new ArrayList<>();
+    /** The menu from the MENU_ITEM table, grouped by category. */
+    private final Map<String, List<Product>> menu = loadMenu();
     private JScrollPane scrollPane;
     private JLabel totalLabel;
 
@@ -65,6 +47,14 @@ public class MenuPage extends JPanel {
 
     public void setTotal(double total) {
         totalLabel.setText("\u20B1" + String.format("%.2f", total));
+    }
+
+    private static Map<String, List<Product>> loadMenu() {
+        try {
+            return MenuItemDAO.loadMenu();
+        } catch (SQLException e) {
+            throw new IllegalStateException("Could not load the menu from the database.", e);
+        }
     }
 
     /**
@@ -140,9 +130,8 @@ public class MenuPage extends JPanel {
         list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
         list.setBackground(Color.WHITE);
         String[] names = {"Meals", "Snacks", "Drinks"};
-        Product[][] products = {MEALS, SNACKS, DRINKS};
         for (int i = 0; i < sections.length; i++) {
-            sections[i] = buildSection(names[i], products[i]);
+            sections[i] = buildSection(names[i], menu.getOrDefault(names[i], new ArrayList<>()));
             list.add(sections[i]);
         }
 
@@ -159,7 +148,7 @@ public class MenuPage extends JPanel {
         return scrollPane;
     }
 
-    private JPanel buildSection(String title, Product[] products) {
+    private JPanel buildSection(String title, List<Product> products) {
         JPanel section = new JPanel(new BorderLayout());
         section.setBackground(Color.WHITE);
         section.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));

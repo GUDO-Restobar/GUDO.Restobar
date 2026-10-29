@@ -1,6 +1,8 @@
 package ui.kiosk;
 
+import data.OrderDAO;
 import java.awt.*;
+import java.sql.SQLException;
 import javax.swing.*;
 import util.*;
 
@@ -154,6 +156,13 @@ public class LandingPage extends JFrame {
             () -> cardLayout.show(screenPanel, START_OVER_SCREEN)
         );
         screenPanel.add(menuPage, MENU_SCREEN);
+        // Pick up stock changes made in the database (e.g. by the manager) every time the menu is shown.
+        menuPage.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override public void componentShown(java.awt.event.ComponentEvent e) {
+                reloadStock();
+                menuPage.refreshAvailability(cart);
+            }
+        });
 
         // Any change to the cart (Menu, Add Order, Checkout, Edit Order) updates the Menu total.
         // It also greys out any product whose stock is used up or fully in the cart.
@@ -161,12 +170,18 @@ public class LandingPage extends JFrame {
             menuPage.setTotal(cart.getTotal());
             menuPage.refreshAvailability(cart);
         });
+        menuPage.refreshAvailability(cart); // products that start out of stock
 
         screenPanel.add(new CheckoutPage(
             cart,
             () -> cardLayout.show(screenPanel, MENU_SCREEN),
             () -> cardLayout.show(screenPanel, START_OVER_SCREEN),
-            () -> cardLayout.show(screenPanel, PAYMENT_OPTION_SCREEN),
+            () -> {
+                // Nothing to pay for if the order is empty.
+                if (!cart.getItems().isEmpty()) {
+                    cardLayout.show(screenPanel, PAYMENT_OPTION_SCREEN);
+                }
+            },
             this::showEditOrder
         ), CHECKOUT_SCREEN);
         screenPanel.add(new StartOver(
@@ -191,15 +206,54 @@ public class LandingPage extends JFrame {
         receiptTimer.setRepeats(false);
         receipt.addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override public void componentShown(java.awt.event.ComponentEvent e) {
-                // The order is final once the receipt shows: take it out of stock.
-                Inventory.deduct(cart);
-                menuPage.refreshAvailability(cart);
-                receiptTimer.restart();
+                // The receipt only stays if the order was really saved to the database.
+                if (placeOrder(receipt)) {
+                    receiptTimer.restart();
+                }
             }
             @Override public void componentHidden(java.awt.event.ComponentEvent e) { receiptTimer.stop(); }
         });
         setContentPane(screenPanel);
         cardLayout.show(screenPanel, LANDING_SCREEN);
+    }
+
+    /**
+     * Saves the order (and reduces the stock) in MySQL.
+     * @return true if it was saved; false if the customer was sent back to Checkout
+     */
+    private boolean placeOrder(OrderReceipt receipt) {
+        try {
+            int orderID = OrderDAO.saveOrder(
+                cart, OrderSession.getOrderType(), OrderSession.getPaymentMethod());
+            OrderSession.setOrderID(orderID);
+            receipt.setOrderInfo(orderID, OrderSession.getOrderType(), OrderSession.getPaymentMethod());
+            reloadStock();
+            menuPage.refreshAvailability(cart);
+            return true;
+        } catch (OrderDAO.OutOfStockException e) {
+            orderFailed("Sorry, " + e.getItemName() + " just ran out of stock.\n"
+                + "Your order was adjusted to what is still available. Please check it again.");
+        } catch (SQLException e) {
+            e.printStackTrace();
+            orderFailed("Sorry, we couldn't save your order right now.\nPlease try again.");
+        }
+        return false;
+    }
+
+    private void orderFailed(String message) {
+        reloadStock();
+        cart.trimToStock();
+        menuPage.refreshAvailability(cart);
+        JOptionPane.showMessageDialog(this, message, "Order not placed", JOptionPane.WARNING_MESSAGE);
+        cardLayout.show(screenPanel, CHECKOUT_SCREEN);
+    }
+
+    private void reloadStock() {
+        try {
+            Inventory.refresh();
+        } catch (SQLException e) {
+            e.printStackTrace(); // keep using the last known stock
+        }
     }
 
     private void showAddOrder(Product product, boolean editMode) {

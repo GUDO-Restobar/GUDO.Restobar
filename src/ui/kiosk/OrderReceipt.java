@@ -2,12 +2,14 @@ package ui.kiosk;
 
 import java.awt.*;
 import javax.swing.*;
-
 import util.*;
 
 public class OrderReceipt extends JPanel {
     private static final String LANDING_SCREEN = "landing";
     private static final String MENU_SCREEN = "menu_page";
+
+    private JLabel lblNumber;
+    private JLabel lblType;
 
     public OrderReceipt() {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
@@ -92,7 +94,7 @@ public class OrderReceipt extends JPanel {
         lblTitle.setForeground(Color.WHITE);
         lblTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel lblNumber = new JLabel("#67"); 
+        lblNumber = new JLabel(); 
         Font montserratExtraBold;
         try {
             montserratExtraBold = FontLoader.loadFont("public/assets/fonts/Inter/static/Montserrat-Bold.ttf").deriveFont(Font.BOLD, 96f);
@@ -103,7 +105,7 @@ public class OrderReceipt extends JPanel {
         lblNumber.setForeground(Color.WHITE);
         lblNumber.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel lblType = new JLabel("Take-out • Cash");
+        lblType = new JLabel("Take-out • Cash");
         lblType.setFont(interLight.deriveFont(Font.PLAIN, 16f));
         lblType.setForeground(Color.WHITE);
         lblType.setAlignmentX(Component.CENTER_ALIGNMENT);
@@ -139,5 +141,12 @@ public class OrderReceipt extends JPanel {
         add(center);
         add(Box.createRigidArea(new Dimension(0, 20)));
         add(btmPanel);
+    }
+
+    /** Shows the real order number from the database, plus how it was ordered and paid. */
+    public void setOrderInfo(int orderID, String orderType, String paymentMethod) {
+        String type = "Takeout".equalsIgnoreCase(orderType) ? "Take-out" : orderType;
+        lblNumber.setText("#" + orderID);
+        lblType.setText(type + " • " + paymentMethod);
     }
 }
