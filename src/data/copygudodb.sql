@@ -1,6 +1,5 @@
 -- SQLBook: Code
 -- Active: 1793204365560@@mysql-27a36514-gudorestobar.b.aivencloud.com@24673@gudorestobardb
-copygudodb.sql
 
 -- Task 4: Create database
 CREATE DATABASE IF NOT EXISTS gudorestobardb;
