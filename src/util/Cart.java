@@ -23,6 +23,14 @@ public class Cart {
         }
     }
 
+    public void setQuantity(Product product, int quantity) {
+        if (quantity <= 0) {
+            items.remove(product);
+        } else {
+            items.put(product, quantity);
+        }
+    }
+
     public Map<Product, Integer> getItems() {
         return Collections.unmodifiableMap(items);
     }
