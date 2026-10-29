@@ -4,6 +4,8 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 import javax.swing.*;
 import util.*;
@@ -45,6 +47,7 @@ public class MenuPage extends JPanel {
     private final Consumer<Product> onProductSelected;
     private final Runnable onCheckout, onStartOver;
     private final JPanel[] sections = new JPanel[3];
+    private final List<ItemCard> itemCards = new ArrayList<>();
     private JScrollPane scrollPane;
     private JLabel totalLabel;
 
@@ -62,6 +65,16 @@ public class MenuPage extends JPanel {
 
     public void setTotal(double total) {
         totalLabel.setText("\u20B1" + String.format("%.2f", total));
+    }
+
+    /**
+     * Marks every product whose stock is used up (or is fully reserved by the
+     * current cart) as UNAVAILABLE, and makes it unclickable.
+     */
+    public void refreshAvailability(Cart cart) {
+        for (ItemCard card : itemCards) {
+            card.setAvailable(Inventory.getAvailable(card.getProduct(), cart) > 0);
+        }
     }
 
     private static Font loadFont(String file) {
@@ -159,7 +172,11 @@ public class MenuPage extends JPanel {
 
         // TODO: Connect item selection to the Product Details page.
         // Pass the selected Product through the onProductSelected callback.
-        for (Product product : products) grid.add(new ItemCard(product, bold, onProductSelected));
+        for (Product product : products) {
+            ItemCard card = new ItemCard(product, bold, onProductSelected);
+            itemCards.add(card);
+            grid.add(card);
+        }
         section.add(grid, BorderLayout.CENTER);
         return section;
     }

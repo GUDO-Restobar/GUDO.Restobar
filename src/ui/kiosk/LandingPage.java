@@ -156,7 +156,11 @@ public class LandingPage extends JFrame {
         screenPanel.add(menuPage, MENU_SCREEN);
 
         // Any change to the cart (Menu, Add Order, Checkout, Edit Order) updates the Menu total.
-        cart.addChangeListener(() -> menuPage.setTotal(cart.getTotal()));
+        // It also greys out any product whose stock is used up or fully in the cart.
+        cart.addChangeListener(() -> {
+            menuPage.setTotal(cart.getTotal());
+            menuPage.refreshAvailability(cart);
+        });
 
         screenPanel.add(new CheckoutPage(
             cart,
@@ -186,7 +190,12 @@ public class LandingPage extends JFrame {
         });
         receiptTimer.setRepeats(false);
         receipt.addComponentListener(new java.awt.event.ComponentAdapter() {
-            @Override public void componentShown(java.awt.event.ComponentEvent e) { receiptTimer.restart(); }
+            @Override public void componentShown(java.awt.event.ComponentEvent e) {
+                // The order is final once the receipt shows: take it out of stock.
+                Inventory.deduct(cart);
+                menuPage.refreshAvailability(cart);
+                receiptTimer.restart();
+            }
             @Override public void componentHidden(java.awt.event.ComponentEvent e) { receiptTimer.stop(); }
         });
         setContentPane(screenPanel);
@@ -242,7 +251,7 @@ public class LandingPage extends JFrame {
         screenPanel.repaint();
     }
 
-    /** Shows "Your Cravings has Been Modified" for 5 seconds, then returns to Checkout. */
+    /** Shows "Your Cravings has Been Modified" for 2 seconds, then returns to Checkout. */
     private void showOrderEdited() {
         if (orderEditedPage != null) screenPanel.remove(orderEditedPage);
 
