@@ -158,6 +158,8 @@ public class LandingPage extends JFrame {
             () -> cardLayout.show(screenPanel, MENU_SCREEN)
         ), START_OVER_SCREEN);
 
+        screenPanel.add(new OrderReceipt(), ORDER_OPTION_SCREEN);
+        screenPanel.add(new MenuPage(null, null, null), "menu_page");
         setContentPane(screenPanel);
         cardLayout.show(screenPanel, LANDING_SCREEN);
     }
