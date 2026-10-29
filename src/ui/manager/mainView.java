@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
+import data.DbWatcher;
 import data.dbconnect;
 import util.FontLoader;
 
@@ -97,7 +98,7 @@ public class mainView extends JFrame {
         table.getTableHeader().setForeground(MAINWHITE);
         table.getTableHeader().setReorderingAllowed(false);
 
-        List<Object[]> allRows = loadOrderData();
+        List<Object[]> allRows = new ArrayList<>(loadOrderData());
 
         JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.setOpaque(false);
@@ -141,6 +142,25 @@ public class mainView extends JFrame {
             pagination.repaint();
         };
         refresh[0].run();
+
+        // Real time: whenever the kiosk saves an order (or an order's status changes),
+        // reload the rows and redraw the current page. Only runs while this view is on screen.
+        DbWatcher.Subscription[] watch = new DbWatcher.Subscription[1];
+        view.addHierarchyListener(e -> {
+            if ((e.getChangeFlags() & java.awt.event.HierarchyEvent.DISPLAYABILITY_CHANGED) == 0) return;
+            if (view.isDisplayable() && watch[0] == null) {
+                watch[0] = DbWatcher.onOrdersChanged(() -> {
+                    List<Object[]> latest = loadOrderData(false);
+                    if (latest == null) return;
+                    allRows.clear();
+                    allRows.addAll(latest);
+                    refresh[0].run();
+                });
+            } else if (!view.isDisplayable() && watch[0] != null) {
+                watch[0].cancel();
+                watch[0] = null;
+            }
+        });
 
         view.add(orderHistory);
         view.add(label);
@@ -229,6 +249,12 @@ public class mainView extends JFrame {
      * inserts, so the total falls back to the sum of the order's line items.
      */
     private static List<Object[]> loadOrderData() {
+        List<Object[]> rows = loadOrderData(true);
+        return rows != null ? rows : new ArrayList<>();
+    }
+
+    /** @param showErrors false for background refreshes, which just return null on failure. */
+    private static List<Object[]> loadOrderData(boolean showErrors) {
         List<Object[]> rows = new ArrayList<>();
 
         String query =
@@ -258,6 +284,7 @@ public class mainView extends JFrame {
             }
         } catch (SQLException e) {
             e.printStackTrace();
+            if (!showErrors) return null;
             JOptionPane.showMessageDialog(null, "Database Error: " + e.getMessage());
         }
         return rows;

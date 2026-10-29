@@ -136,7 +136,7 @@ public class LandingPage extends JFrame {
         startBtn.setContentAreaFilled(false);
         startBtn.setBorderPainted(false);
         startBtn.setFocusPainted(false);
-        startBtn.addActionListener(e -> cardLayout.show(screenPanel, ORDER_OPTION_SCREEN));
+        startBtn.addActionListener(e -> showScreen(ORDER_OPTION_SCREEN));
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
         buttonPanel.setBackground(new Color(246, 246, 246));
@@ -152,8 +152,8 @@ public class LandingPage extends JFrame {
 
         menuPage = new MenuPage(
             product -> showAddOrder(product, false),
-            () -> cardLayout.show(screenPanel, CHECKOUT_SCREEN),
-            () -> cardLayout.show(screenPanel, START_OVER_SCREEN)
+            () -> showScreen(CHECKOUT_SCREEN),
+            () -> showScreen(START_OVER_SCREEN)
         );
         screenPanel.add(menuPage, MENU_SCREEN);
         // Pick up stock changes made in the database (e.g. by the manager) every time the menu is shown.
@@ -174,12 +174,12 @@ public class LandingPage extends JFrame {
 
         screenPanel.add(new CheckoutPage(
             cart,
-            () -> cardLayout.show(screenPanel, MENU_SCREEN),
-            () -> cardLayout.show(screenPanel, START_OVER_SCREEN),
+            () -> showScreen(MENU_SCREEN),
+            () -> showScreen(START_OVER_SCREEN),
             () -> {
                 // Nothing to pay for if the order is empty.
                 if (!cart.getItems().isEmpty()) {
-                    cardLayout.show(screenPanel, PAYMENT_OPTION_SCREEN);
+                    showScreen(PAYMENT_OPTION_SCREEN);
                 }
             },
             this::showEditOrder
@@ -188,9 +188,9 @@ public class LandingPage extends JFrame {
             () -> {
                 cart.clear();
                 menuPage.setTotal(cart.getTotal());
-                cardLayout.show(screenPanel, LANDING_SCREEN);
+                showScreen(LANDING_SCREEN);
             },
-            () -> cardLayout.show(screenPanel, MENU_SCREEN)
+            () -> showScreen(MENU_SCREEN)
         ), START_OVER_SCREEN);
 
         screenPanel.add(new PaymentOption(), PAYMENT_OPTION_SCREEN);
@@ -201,7 +201,7 @@ public class LandingPage extends JFrame {
         Timer receiptTimer = new Timer(10000, e -> {
             cart.clear();
             menuPage.setTotal(cart.getTotal());
-            cardLayout.show(screenPanel, LANDING_SCREEN);
+            showScreen(LANDING_SCREEN);
         });
         receiptTimer.setRepeats(false);
         receipt.addComponentListener(new java.awt.event.ComponentAdapter() {
@@ -214,7 +214,7 @@ public class LandingPage extends JFrame {
             @Override public void componentHidden(java.awt.event.ComponentEvent e) { receiptTimer.stop(); }
         });
         setContentPane(screenPanel);
-        cardLayout.show(screenPanel, LANDING_SCREEN);
+        showScreen(LANDING_SCREEN);
     }
 
     /**
@@ -245,7 +245,25 @@ public class LandingPage extends JFrame {
         cart.trimToStock();
         menuPage.refreshAvailability(cart);
         JOptionPane.showMessageDialog(this, message, "Order not placed", JOptionPane.WARNING_MESSAGE);
-        cardLayout.show(screenPanel, CHECKOUT_SCREEN);
+        showScreen(CHECKOUT_SCREEN);
+    }
+
+    /**
+     * Every page change goes through here. The kiosk does not update live: it picks up
+     * stock changes made in the database (by the manager or another kiosk) only when
+     * the customer moves to another page.
+     */
+    private void showScreen(String screen) {
+        if (!RECEIPT_SCREEN.equals(screen)        // the receipt saves the order itself
+                && !ADD_ORDER_SCREEN.equals(screen)   // these two pages were already
+                && !EDIT_ORDER_SCREEN.equals(screen)) { // built from freshly loaded stock
+            reloadStock();
+            if (CHECKOUT_SCREEN.equals(screen) || PAYMENT_OPTION_SCREEN.equals(screen)) {
+                cart.trimToStock(); // never let the customer pay for stock that is gone
+            }
+            menuPage.refreshAvailability(cart);
+        }
+        cardLayout.show(screenPanel, screen);
     }
 
     private void reloadStock() {
@@ -257,6 +275,7 @@ public class LandingPage extends JFrame {
     }
 
     private void showAddOrder(Product product, boolean editMode) {
+        reloadStock(); // the quantity limits are read from the stock when the page is built
         if (addOrderPage != null) screenPanel.remove(addOrderPage);
 
         addOrderPage = new AddOrder(
@@ -267,10 +286,10 @@ public class LandingPage extends JFrame {
                 menuPage.setTotal(cart.getTotal());
                 showOrderAdded(editMode);
             },
-            () -> cardLayout.show(screenPanel, editMode ? CHECKOUT_SCREEN : MENU_SCREEN)
+            () -> showScreen(editMode ? CHECKOUT_SCREEN : MENU_SCREEN)
         );
         screenPanel.add(addOrderPage, ADD_ORDER_SCREEN);
-        cardLayout.show(screenPanel, ADD_ORDER_SCREEN);
+        showScreen(ADD_ORDER_SCREEN);
         screenPanel.revalidate();
         screenPanel.repaint();
     }
@@ -281,26 +300,27 @@ public class LandingPage extends JFrame {
         orderAddedPage = new OrderAdded(
             cart.getTotal(),
             edited,
-            () -> cardLayout.show(screenPanel, MENU_SCREEN)
+            () -> showScreen(MENU_SCREEN)
         );
         screenPanel.add(orderAddedPage, ORDER_ADDED_SCREEN);
-        cardLayout.show(screenPanel, ORDER_ADDED_SCREEN);
+        showScreen(ORDER_ADDED_SCREEN);
         screenPanel.revalidate();
         screenPanel.repaint();
     }
 
     /** Opens the Edit Order page for a meal that is already in the order. */
     private void showEditOrder(Product product) {
+        reloadStock();
         if (editOrderPage != null) screenPanel.remove(editOrderPage);
 
         editOrderPage = new EditOrder(
             product,
             cart,
             this::showOrderEdited,
-            () -> cardLayout.show(screenPanel, CHECKOUT_SCREEN)
+            () -> showScreen(CHECKOUT_SCREEN)
         );
         screenPanel.add(editOrderPage, EDIT_ORDER_SCREEN);
-        cardLayout.show(screenPanel, EDIT_ORDER_SCREEN);
+        showScreen(EDIT_ORDER_SCREEN);
         screenPanel.revalidate();
         screenPanel.repaint();
     }
@@ -311,10 +331,10 @@ public class LandingPage extends JFrame {
 
         orderEditedPage = new OrderEdited(
             cart.getTotal(),
-            () -> cardLayout.show(screenPanel, CHECKOUT_SCREEN)
+            () -> showScreen(CHECKOUT_SCREEN)
         );
         screenPanel.add(orderEditedPage, ORDER_EDITED_SCREEN);
-        cardLayout.show(screenPanel, ORDER_EDITED_SCREEN);
+        showScreen(ORDER_EDITED_SCREEN);
         screenPanel.revalidate();
         screenPanel.repaint();
     }

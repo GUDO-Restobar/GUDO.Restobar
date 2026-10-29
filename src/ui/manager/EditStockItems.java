@@ -1,6 +1,7 @@
 package ui.manager;
 
 import java.awt.*;
+import data.DbWatcher;
 import data.dbconnect;
 import java.sql.*;
 import java.util.ArrayList;
@@ -23,6 +24,8 @@ public class EditStockItems extends JFrame {
     private final JPanel sidebarHolder = new JPanel(new BorderLayout());
 
     private final List<StockItem> stockItems = new ArrayList<>();
+    private final List<StockCard> stockCards = new ArrayList<>();
+    private DbWatcher.Subscription stockWatch;
 
     public EditStockItems() {
         setTitle("Gudo Restobar Manager");
@@ -45,6 +48,42 @@ public class EditStockItems extends JFrame {
         add(contentPanel);
 
         showTab(mainView.TAB_HISTORY);
+
+        // Real time: the kiosk reduces the stock whenever an order is paid, so keep the
+        // counts on screen in step with the database for as long as this window is open.
+        contentPanel.addHierarchyListener(e -> {
+            if ((e.getChangeFlags() & java.awt.event.HierarchyEvent.DISPLAYABILITY_CHANGED) == 0) return;
+            if (contentPanel.isDisplayable() && stockWatch == null) {
+                stockWatch = DbWatcher.onStockChanged(this::syncStockFromDatabase);
+            } else if (!contentPanel.isDisplayable() && stockWatch != null) {
+                stockWatch.cancel();
+                stockWatch = null;
+            }
+        });
+    }
+
+    /**
+     * Pulls the latest stock from MySQL into the open cards.
+     * An item the manager is in the middle of editing (not applied yet) keeps its
+     * pending number; only its "In stock" figure is updated.
+     */
+    private void syncStockFromDatabase() {
+        java.util.Map<Integer, Integer> latest = new java.util.HashMap<>();
+        try (Connection conn = dbconnect.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery("SELECT itemID, stockQuantity FROM MENU_ITEM")) {
+            while (rs.next()) latest.put(rs.getInt(1), rs.getInt(2));
+        } catch (SQLException e) {
+            return; // try again on the next change
+        }
+        for (StockItem item : stockItems) {
+            Integer db = latest.get(item.itemID);
+            if (db == null) continue;
+            boolean hasPendingEdit = item.stock != item.committed;
+            item.committed = db;
+            if (!hasPendingEdit) item.stock = db;
+        }
+        for (StockCard card : stockCards) card.refresh();
     }
 
     /** Switches the card and redraws the sidebar so the matching tab is highlighted. */
@@ -146,7 +185,7 @@ public class EditStockItems extends JFrame {
         list.setBackground(MAINWHITE);
         list.setBorder(BorderFactory.createEmptyBorder(12, 4, 12, 4));
 
-        List<StockCard> cards = new ArrayList<>();
+        List<StockCard> cards = stockCards;
         String current = null;
         JPanel grid = null;
         for (StockItem item : stockItems) {
