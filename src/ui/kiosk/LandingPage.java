@@ -8,9 +8,18 @@ import util.*;
 public class LandingPage extends JFrame {
     private static final String LANDING_SCREEN = "landing";
     private static final String ORDER_OPTION_SCREEN = "order-option";
+    private static final String MENU_SCREEN = "menu_page";
+    private static final String ADD_ORDER_SCREEN = "add-order";
+    private static final String ORDER_ADDED_SCREEN = "order-added";
+    private static final String CHECKOUT_SCREEN = "checkout";
+    private static final String START_OVER_SCREEN = "start-over";
 
     private final CardLayout cardLayout = new CardLayout();
     private final JPanel screenPanel = new JPanel(cardLayout);
+    private final Cart cart = new Cart();
+    private MenuPage menuPage;
+    private AddOrder addOrderPage;
+    private OrderAdded orderAddedPage;
 
     public LandingPage() {
 
@@ -131,13 +140,60 @@ public class LandingPage extends JFrame {
         landingPanel.add(buttonPanel, BorderLayout.SOUTH);
 
         screenPanel.add(landingPanel, LANDING_SCREEN);
-        screenPanel.add(new CheckoutPage(
-            new Cart(),
-            () -> cardLayout.show(screenPanel, "menu_page"),
-            () -> cardLayout.show(screenPanel, LANDING_SCREEN),
-            null
-        ), ORDER_OPTION_SCREEN);
+        screenPanel.add(new OrderOption(), ORDER_OPTION_SCREEN);
 
+        menuPage = new MenuPage(
+            product -> showAddOrder(product, false),
+            () -> cardLayout.show(screenPanel, CHECKOUT_SCREEN),
+            () -> cardLayout.show(screenPanel, START_OVER_SCREEN)
+        );
+        screenPanel.add(menuPage, MENU_SCREEN);
+        screenPanel.add(new CheckoutPage(cart), CHECKOUT_SCREEN);
+        screenPanel.add(new StartOver(
+            () -> {
+                cart.clear();
+                menuPage.setTotal(cart.getTotal());
+                cardLayout.show(screenPanel, LANDING_SCREEN);
+            },
+            () -> cardLayout.show(screenPanel, MENU_SCREEN)
+        ), START_OVER_SCREEN);
+
+        screenPanel.add(new OrderReceipt(), ORDER_OPTION_SCREEN);
+        screenPanel.add(new MenuPage(null, null, null), "menu_page");
         setContentPane(screenPanel);
+        cardLayout.show(screenPanel, LANDING_SCREEN);
+    }
+
+    private void showAddOrder(Product product, boolean editMode) {
+        if (addOrderPage != null) screenPanel.remove(addOrderPage);
+
+        addOrderPage = new AddOrder(
+            product,
+            cart,
+            editMode,
+            () -> {
+                menuPage.setTotal(cart.getTotal());
+                showOrderAdded(editMode);
+            },
+            () -> cardLayout.show(screenPanel, editMode ? CHECKOUT_SCREEN : MENU_SCREEN)
+        );
+        screenPanel.add(addOrderPage, ADD_ORDER_SCREEN);
+        cardLayout.show(screenPanel, ADD_ORDER_SCREEN);
+        screenPanel.revalidate();
+        screenPanel.repaint();
+    }
+
+    private void showOrderAdded(boolean edited) {
+        if (orderAddedPage != null) screenPanel.remove(orderAddedPage);
+
+        orderAddedPage = new OrderAdded(
+            cart.getTotal(),
+            edited,
+            () -> cardLayout.show(screenPanel, MENU_SCREEN)
+        );
+        screenPanel.add(orderAddedPage, ORDER_ADDED_SCREEN);
+        cardLayout.show(screenPanel, ORDER_ADDED_SCREEN);
+        screenPanel.revalidate();
+        screenPanel.repaint();
     }
 }
