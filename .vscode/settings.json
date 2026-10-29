@@ -2,5 +2,21 @@
 {
     "java.project.referencedLibraries": [
         "lib/**/*.jar"
+    ],
+    "sqltools.connections": [
+        {
+            "mysqlOptions": {
+                "authProtocol": "default",
+                "enableSsl": "Disabled"
+            },
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "mysql-27a36514-gudorestobar.b.aivencloud.com",
+            "port": 24673,
+            "driver": "MySQL",
+            "name": "GUDO Cloud Database",
+            "username": "avnadmin",
+            "database": "gudorestobardb"
+        }
     ]
 }
