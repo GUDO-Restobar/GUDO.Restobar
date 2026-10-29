@@ -2,11 +2,14 @@ package ui.kiosk;
 
 import java.awt.*;
 import javax.swing.*;
+
 import util.*;
 
 public class OrderOption extends JPanel {
     private static final String LANDING_SCREEN = "landing";
-        public OrderOption() {
+    private static final String MENU_SCREEN = "menu_page";
+
+    public OrderOption() {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setBackground(new Color(246, 246, 246));
         
@@ -58,8 +61,8 @@ public class OrderOption extends JPanel {
         center.setOpaque(false);
         center.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JButton importButton = createCardButton("public/assets/icons/import_dinein.png");
-        JButton exportButton = createCardButton("public/assets/icons/export_takeout.png");
+        JButton importButton = createCardButton("public/assets/icons/import_dinein.png", MENU_SCREEN, "Dine-in");
+        JButton exportButton = createCardButton("public/assets/icons/export_takeout.png", MENU_SCREEN, "Takeout");
         center.add(importButton);
         center.add(exportButton);
 
@@ -82,9 +85,8 @@ public class OrderOption extends JPanel {
         JPanel btnPanel = new JPanel();
         btnPanel.setBackground(new Color(246, 246, 246));
         btnPanel.setBorder(BorderFactory.createEmptyBorder(12, 12, 30, 12));
-        JButton backButton = createBackButton("public/assets/icons/button.png");
+        JButton backButton = createBackButton(LANDING_SCREEN);
         btnPanel.add(backButton);
-
 
         add(Box.createRigidArea(new Dimension(0, 30)));
         add(heading);
@@ -94,10 +96,9 @@ public class OrderOption extends JPanel {
         add(handsPanel);
         add(Box.createRigidArea(new Dimension(0, 10)));
         add(btnPanel);
-
     }
 
-    private JButton createCardButton(String imagePath) {
+    private JButton createCardButton(String imagePath, String targetScreen, String orderType) {
         ImageIcon icon = new ImageIcon(imagePath);
         Image scaledImg = icon.getImage().getScaledInstance(208, 269, Image.SCALE_SMOOTH);
         
@@ -109,13 +110,28 @@ public class OrderOption extends JPanel {
         button.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         button.addActionListener(e -> {
-            // Action handling here
+            OrderSession.setOrderType(orderType);
+            System.out.println("Selected Order Type: " + orderType);
+
+            
+            Component ancestor = button;
+            while ((ancestor = ancestor.getParent()) != null) {
+                if (ancestor instanceof Container) {
+                    LayoutManager layout = ((Container) ancestor).getLayout();
+                    if (layout instanceof CardLayout) {
+                        CardLayout cl = (CardLayout) layout;
+                        cl.show((Container) ancestor, targetScreen);
+                        break;
+                    }
+                }
+            }
         });
 
         return button;
     }
-    private JButton createBackButton(String imagePath) {
-        ImageIcon icon = new ImageIcon(imagePath);
+
+    private JButton createBackButton(String targetScreen) {
+        ImageIcon icon = new ImageIcon("public/assets/icons/button.png");
         Image scaledImg = icon.getImage().getScaledInstance(329, 49, Image.SCALE_SMOOTH);
         
         JButton button = new JButton(new ImageIcon(scaledImg));
@@ -132,7 +148,7 @@ public class OrderOption extends JPanel {
                     LayoutManager layout = ((Container) ancestor).getLayout();
                     if (layout instanceof CardLayout) {
                         CardLayout cl = (CardLayout) layout;
-                        cl.show((Container) ancestor, LANDING_SCREEN);
+                        cl.show((Container) ancestor, targetScreen);
                         break;
                     }
                 }
