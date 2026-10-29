@@ -5,6 +5,7 @@ import java.io.IOException;
 import javax.swing.*;
 import util.Cart;
 import util.FontLoader;
+import util.Inventory;
 import util.Product;
 
 /**
@@ -31,6 +32,7 @@ public class EditOrder extends JPanel {
     private int quantity;
     private JLabel quantityLabel;
     private JButton saveButton;
+    private JButton plusButton;
 
     public EditOrder(Product product, Cart cart, Runnable onSaved, Runnable onCancel) {
         this.product = product;
@@ -41,6 +43,7 @@ public class EditOrder extends JPanel {
 
         Integer currentQuantity = draft.getItems().get(product);
         quantity = currentQuantity != null ? currentQuantity : 1;
+        quantity = Math.max(1, Math.min(quantity, maxQuantity()));
 
         setLayout(new BorderLayout(0, 14));
         setBackground(OFF_WHITE);
@@ -50,6 +53,7 @@ public class EditOrder extends JPanel {
         add(buildDetails(), BorderLayout.CENTER);
         add(buildButtons(), BorderLayout.SOUTH);
         updateSaveButton();
+        updatePlusButton();
     }
 
     private JPanel buildHeader() {
@@ -137,6 +141,7 @@ public class EditOrder extends JPanel {
         controls.setOpaque(false);
         JButton minus = quantityButton("−");
         JButton plus = quantityButton("+");
+        plusButton = plus;
         quantityLabel = new JLabel(String.valueOf(quantity), SwingConstants.CENTER);
         quantityLabel.setFont(bold.deriveFont(18f));
         quantityLabel.setForeground(ORANGE);
@@ -209,10 +214,27 @@ public class EditOrder extends JPanel {
         return buttons;
     }
 
+    /** The order already holds this meal, so the limit is simply what is in stock. */
+    private int maxQuantity() {
+        return Math.max(1, Inventory.getStock(product));
+    }
+
     private void changeQuantity(int change) {
-        quantity = Math.max(1, quantity + change);
+        quantity = Math.min(maxQuantity(), Math.max(1, quantity + change));
         quantityLabel.setText(String.valueOf(quantity));
         updateSaveButton();
+        updatePlusButton();
+    }
+
+    /** Grey and unclickable once the quantity has reached what is in stock. */
+    private void updatePlusButton() {
+        if (plusButton == null) {
+            return;
+        }
+        boolean canAdd = quantity < maxQuantity();
+        plusButton.setEnabled(canAdd);
+        plusButton.setBackground(canAdd ? ORANGE : new Color(200, 200, 200));
+        plusButton.setCursor(Cursor.getPredefinedCursor(canAdd ? Cursor.HAND_CURSOR : Cursor.DEFAULT_CURSOR));
     }
 
     private void updateSaveButton() {

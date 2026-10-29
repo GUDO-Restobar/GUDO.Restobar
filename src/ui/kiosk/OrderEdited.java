@@ -6,13 +6,13 @@ import util.*;
 
 /**
  * Confirmation shown after "Save Changes to Order". It stays on screen for
- * 5 seconds, then hands control back so the kiosk can return to Checkout.
+ * 2 seconds, then hands control back so the kiosk can return to Checkout.
  */
 public class OrderEdited extends ConfirmationBackground {
     private static final Color ORANGE = new Color(236, 94, 2);
     private static final Color BROWN = new Color(74, 45, 35);
     private static final Color OFF_WHITE = new Color(246, 246, 246);
-    private static final int DISPLAY_MILLIS = 5000;
+    private static final int DISPLAY_MILLIS = 2000;
 
     private final Timer redirectTimer;
 

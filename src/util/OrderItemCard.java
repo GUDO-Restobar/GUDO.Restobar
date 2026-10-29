@@ -17,6 +17,11 @@ public class OrderItemCard extends JPanel {
     private static final Color BUTTON_BORDER = new Color(190, 190, 190);
     private static final Color BUTTON_HOVER = new Color(242, 242, 242);
     private static final Color CONFIRM_RED = new Color(198, 40, 40); // #C62828
+    private static final Color DISABLED_GREY = new Color(200, 200, 200);
+
+    /** Height of the name / quantity row. Matches the 30px circle buttons. */
+    private static final int HEADER_HEIGHT = 30;
+    private static final int NAME_GAP = 14;
 
     private static final String TRASH_ICON = "public/assets/icons/trash.png";
     private static final int TRASH_SIZE = 23;
@@ -45,6 +50,7 @@ public class OrderItemCard extends JPanel {
     private int quantity;
     private JLabel quantityLabel;
     private JLabel priceLabel;
+    private CircleButton plusButton;
 
     /**
      * @param product          the product this card shows
@@ -98,14 +104,27 @@ public class OrderItemCard extends JPanel {
 
     /** Applies a +1 / -1 change. The quantity never drops below 1; the trash icon removes the item. */
     private void changeQuantity(int change) {
-        int updated = Math.max(1, quantity + change);
+        int updated = Math.min(maxQuantity(), Math.max(1, quantity + change));
         if (updated == quantity) {
             return;
         }
         quantity = updated;
         quantityLabel.setText(String.valueOf(quantity));
         priceLabel.setText(formatPrice(product.getPrice() * quantity));
+        updatePlusButton();
         onQuantityChange.accept(quantity);
+    }
+
+    /** The most of this product the customer can have: whatever is in stock. */
+    private int maxQuantity() {
+        return Math.max(1, Inventory.getStock(product));
+    }
+
+    /** Disables the + circle once the quantity has reached the stock. */
+    private void updatePlusButton() {
+        if (plusButton != null) {
+            plusButton.setEnabled(quantity < maxQuantity());
+        }
     }
 
     private static String formatPrice(double price) {
@@ -135,12 +154,10 @@ public class OrderItemCard extends JPanel {
     }
 
     private JPanel buildHeader(String name) {
-        JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        JPanel header = new JPanel(new HeaderLayout());
         header.setOpaque(false);
 
-        JLabel nameLabel = new JLabel(name);
-        nameLabel.setFont(bold.deriveFont(20f));
-        nameLabel.setForeground(DARK_TEXT);
+        MealNameLabel nameLabel = new MealNameLabel(name, bold, DARK_TEXT);
 
         quantityLabel = new JLabel(String.valueOf(quantity));
         quantityLabel.setFont(bold.deriveFont(20f));
@@ -150,14 +167,21 @@ public class OrderItemCard extends JPanel {
         minus.addActionListener(e -> changeQuantity(-1));
         CircleButton plus = new CircleButton(true);
         plus.addActionListener(e -> changeQuantity(1));
+        plusButton = plus;
+        updatePlusButton();
+
+        // Same controls and spacing as before, just grouped so the name can
+        // use whatever width is left over.
+        JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
+        controls.setOpaque(false);
+        controls.add(minus);
+        controls.add(Box.createHorizontalStrut(5));
+        controls.add(quantityLabel);
+        controls.add(Box.createHorizontalStrut(5));
+        controls.add(plus);
 
         header.add(nameLabel);
-        header.add(Box.createHorizontalStrut(14));
-        header.add(minus);
-        header.add(Box.createHorizontalStrut(5));
-        header.add(quantityLabel);
-        header.add(Box.createHorizontalStrut(5));
-        header.add(plus);
+        header.add(controls);
         return header;
     }
 
@@ -298,6 +322,195 @@ public class OrderItemCard extends JPanel {
         return new ImageIcon(image);
     }
 
+    /**
+     * Lays out the name followed by the quantity controls, exactly like the old
+     * left-aligned row. The name only gets the width that is left after the
+     * controls, so a long name can never push the controls out of the card.
+     */
+    private static class HeaderLayout implements LayoutManager {
+        @Override public void addLayoutComponent(String name, Component comp) {}
+        @Override public void removeLayoutComponent(Component comp) {}
+
+        @Override
+        public Dimension preferredLayoutSize(Container parent) {
+            return new Dimension(0, HEADER_HEIGHT);
+        }
+
+        @Override
+        public Dimension minimumLayoutSize(Container parent) {
+            return new Dimension(0, HEADER_HEIGHT);
+        }
+
+        @Override
+        public void layoutContainer(Container parent) {
+            MealNameLabel name = (MealNameLabel) parent.getComponent(0);
+            Component controls = parent.getComponent(1);
+
+            Dimension controlsSize = controls.getPreferredSize();
+            int available = parent.getWidth() - controlsSize.width - NAME_GAP;
+
+            name.fitTo(available);
+            Dimension nameSize = name.getPreferredSize();
+
+            int nameY = (HEADER_HEIGHT - nameSize.height) / 2;
+            int controlsY = (HEADER_HEIGHT - controlsSize.height) / 2;
+            name.setBounds(0, nameY, nameSize.width, nameSize.height);
+            controls.setBounds(nameSize.width + NAME_GAP, controlsY,
+                controlsSize.width, controlsSize.height);
+        }
+    }
+
+    /**
+     * The meal name. Keeps the normal 20pt look when it fits; otherwise it
+     * shrinks, then wraps onto two lines (still inside the row height), and
+     * only as a last resort is cut with "...".
+     */
+    private static class MealNameLabel extends JComponent {
+        private static final float NORMAL_SIZE = 20f;
+        private static final float MIN_SINGLE_LINE_SIZE = 16f;
+        private static final float MIN_SIZE = 9f;
+
+        private final String text;
+        private final Font baseFont;
+        private String[] lines;
+        private Font font;
+
+        MealNameLabel(String text, Font baseFont, Color color) {
+            this.text = text == null ? "" : text.trim();
+            this.baseFont = baseFont;
+            setForeground(color);
+            setToolTipText(this.text);
+            fitTo(10_000);
+        }
+
+        /** Chooses the font size and line breaks so the name fits in the given width. */
+        void fitTo(int width) {
+            int maxWidth = Math.max(40, width);
+
+            // 1) Normal size down to 16pt on a single line.
+            for (float size = NORMAL_SIZE; size >= MIN_SINGLE_LINE_SIZE; size--) {
+                Font candidate = baseFont.deriveFont(size);
+                if (getFontMetrics(candidate).stringWidth(text) <= maxWidth) {
+                    apply(candidate, new String[] {text});
+                    return;
+                }
+            }
+
+            // 2) Two lines, as large as the row height and width allow.
+            for (float size = 15f; size >= MIN_SIZE; size--) {
+                Font candidate = baseFont.deriveFont(size);
+                FontMetrics fm = getFontMetrics(candidate);
+                if (fm.getHeight() * 2 > HEADER_HEIGHT) {
+                    continue;
+                }
+                String[] wrapped = wrap(text, fm, maxWidth);
+                if (wrapped != null) {
+                    apply(candidate, wrapped);
+                    return;
+                }
+            }
+
+            // 3) Last resort: smallest two-line size, second line cut with "...".
+            Font smallest = baseFont.deriveFont(MIN_SIZE);
+            FontMetrics fm = getFontMetrics(smallest);
+            apply(smallest, wrapWithEllipsis(text, fm, maxWidth));
+        }
+
+        private void apply(Font newFont, String[] newLines) {
+            font = newFont;
+            lines = newLines;
+            FontMetrics fm = getFontMetrics(font);
+            int widest = 0;
+            for (String line : lines) {
+                widest = Math.max(widest, fm.stringWidth(line));
+            }
+            setPreferredSize(new Dimension(widest, fm.getHeight() * lines.length));
+        }
+
+        /** Greedy word wrap into at most two lines; null if it cannot fit. */
+        private static String[] wrap(String text, FontMetrics fm, int maxWidth) {
+            String[] words = text.split("\\s+");
+            StringBuilder first = new StringBuilder();
+            int i = 0;
+            while (i < words.length) {
+                String attempt = first.length() == 0 ? words[i] : first + " " + words[i];
+                if (fm.stringWidth(attempt) > maxWidth) {
+                    break;
+                }
+                first = new StringBuilder(attempt);
+                i++;
+            }
+            if (first.length() == 0) {
+                return null; // a single word is wider than the line
+            }
+            if (i == words.length) {
+                return new String[] {first.toString()};
+            }
+            StringBuilder second = new StringBuilder();
+            for (; i < words.length; i++) {
+                second.append(second.length() == 0 ? "" : " ").append(words[i]);
+            }
+            if (fm.stringWidth(second.toString()) > maxWidth) {
+                return null;
+            }
+            return new String[] {first.toString(), second.toString()};
+        }
+
+        private static String[] wrapWithEllipsis(String text, FontMetrics fm, int maxWidth) {
+            String[] words = text.split("\\s+");
+            StringBuilder first = new StringBuilder();
+            int i = 0;
+            while (i < words.length) {
+                String attempt = first.length() == 0 ? words[i] : first + " " + words[i];
+                if (fm.stringWidth(attempt) > maxWidth) {
+                    break;
+                }
+                first = new StringBuilder(attempt);
+                i++;
+            }
+            if (first.length() == 0) {
+                first = new StringBuilder(cut(words[0], fm, maxWidth));
+                return new String[] {first.toString()};
+            }
+            if (i == words.length) {
+                return new String[] {first.toString()};
+            }
+            StringBuilder rest = new StringBuilder();
+            for (; i < words.length; i++) {
+                rest.append(rest.length() == 0 ? "" : " ").append(words[i]);
+            }
+            return new String[] {first.toString(), cut(rest.toString(), fm, maxWidth)};
+        }
+
+        private static String cut(String value, FontMetrics fm, int maxWidth) {
+            if (fm.stringWidth(value) <= maxWidth) {
+                return value;
+            }
+            String ellipsis = "...";
+            String result = value;
+            while (result.length() > 1 && fm.stringWidth(result + ellipsis) > maxWidth) {
+                result = result.substring(0, result.length() - 1);
+            }
+            return result + ellipsis;
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            Graphics2D g2 = (Graphics2D) g.create();
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
+                RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            g2.setFont(font);
+            g2.setColor(getForeground());
+            FontMetrics fm = g2.getFontMetrics();
+            int y = fm.getAscent();
+            for (String line : lines) {
+                g2.drawString(line, 0, y);
+                y += fm.getHeight();
+            }
+            g2.dispose();
+        }
+    }
+
     /** Small orange circle holding a white minus or plus. */
     private static class CircleButton extends JButton {
         private final boolean plus;
@@ -318,11 +531,17 @@ public class OrderItemCard extends JPanel {
         }
 
         @Override
+        public void setEnabled(boolean enabled) {
+            super.setEnabled(enabled);
+            setCursor(Cursor.getPredefinedCursor(enabled ? Cursor.HAND_CURSOR : Cursor.DEFAULT_CURSOR));
+        }
+
+        @Override
         protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            g2.setColor(hover ? ORANGE_HOVER : ORANGE);
+            g2.setColor(!isEnabled() ? DISABLED_GREY : hover ? ORANGE_HOVER : ORANGE);
             g2.fillOval(0, 0, 25, 25);
 
             g2.setColor(Color.WHITE);

@@ -11,7 +11,11 @@ public class Cart implements Prototype<Cart> {
     private final List<Runnable> listeners = new ArrayList<>();
 
     public void add(Product product) {
-        items.merge(product, 1, Integer::sum);
+        int current = items.getOrDefault(product, 0);
+        if (current >= Inventory.getStock(product)) {
+            return; // never order more than what is in stock
+        }
+        items.put(product, current + 1);
         fireChanged();
     }
 
@@ -34,7 +38,13 @@ public class Cart implements Prototype<Cart> {
         if (quantity <= 0) {
             items.remove(product);
         } else {
-            items.put(product, quantity);
+            // Never more than what is in stock.
+            int capped = Math.min(quantity, Inventory.getStock(product));
+            if (capped <= 0) {
+                items.remove(product);
+            } else {
+                items.put(product, capped);
+            }
         }
         fireChanged();
     }

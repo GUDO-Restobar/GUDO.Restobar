@@ -24,6 +24,9 @@ public class CheckoutPage extends JPanel {
     private final Font bold = loadFont("Montserrat-Bold.ttf");
     private final Font regular = loadFont("Montserrat-Regular.ttf");
 
+    private static final String SCROLL_THUMB = "public/assets/scrollbar/scroll-thumb.png";
+    private static final String SCROLL_TRACK = "public/assets/scrollbar/scroll-track.png";
+
     private static final String EMPTY_CARD = "empty";
     private static final String LIST_CARD = "list";
 
@@ -200,6 +203,14 @@ public class CheckoutPage extends JPanel {
         scrollPane.getViewport().setOpaque(false);
         scrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scrollPane.setVerticalScrollBarPolicy(ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED);
+
+        // Same scroll bar design as the Menu page.
+        JScrollBar bar = scrollPane.getVerticalScrollBar();
+        bar.setUnitIncrement(24);
+        bar.setUI(new KioskScrollBarUI(SCROLL_THUMB, SCROLL_TRACK));
+        bar.setPreferredSize(new Dimension(26, 0));
+        bar.setBorder(BorderFactory.createEmptyBorder(6, 2, 6, 8));
+        bar.setBackground(OFF_WHITE);
         return scrollPane;
     }
 
