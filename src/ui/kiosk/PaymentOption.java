@@ -7,7 +7,8 @@ import util.*;
 
 public class PaymentOption extends JPanel {
     private static final String LANDING_SCREEN = "landing";
-    private static final String MENU_SCREEN = "menu_page";
+    private static final String CHECKOUT_SCREEN = "checkout";
+    private static final String RECEIPT_SCREEN = "receipt";
 
     public PaymentOption() {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
@@ -61,8 +62,8 @@ public class PaymentOption extends JPanel {
         center.setOpaque(false);
         center.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JButton cashButton = createCardButton("public/assets/icons/cash.png", MENU_SCREEN, "Cash"); // change MENU_SCREEN to name of the next page
-        JButton cashlessButton = createCardButton("public/assets/icons/cashless.png", MENU_SCREEN, "Cashless"); // change MENU_SCREEN to name of the next page
+        JButton cashButton = createCardButton("public/assets/icons/cash.png", RECEIPT_SCREEN, "Cash");
+        JButton cashlessButton = createCardButton("public/assets/icons/cashless.png", RECEIPT_SCREEN, "Cashless");
         center.add(cashButton);
         center.add(Box.createRigidArea(new Dimension(0, 20)));
         center.add(cashlessButton);
@@ -71,7 +72,7 @@ public class PaymentOption extends JPanel {
         JPanel btnPanel = new JPanel();
         btnPanel.setBackground(new Color(246, 246, 246));
         btnPanel.setBorder(BorderFactory.createEmptyBorder(12, 12, 30, 12));
-        JButton backButton = createBackButton(LANDING_SCREEN); // change LANDING_SCREEN to name of the previous page
+        JButton backButton = createBackButton(CHECKOUT_SCREEN);
         btnPanel.add(backButton);
 
         add(Box.createRigidArea(new Dimension(0, 30)));

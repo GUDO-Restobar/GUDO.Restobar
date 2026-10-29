@@ -13,6 +13,8 @@ public class LandingPage extends JFrame {
     private static final String ORDER_ADDED_SCREEN = "order-added";
     private static final String CHECKOUT_SCREEN = "checkout";
     private static final String START_OVER_SCREEN = "start-over";
+    private static final String PAYMENT_OPTION_SCREEN = "payment-option";
+    private static final String RECEIPT_SCREEN = "receipt";
 
     private final CardLayout cardLayout = new CardLayout();
     private final JPanel screenPanel = new JPanel(cardLayout);
@@ -148,7 +150,12 @@ public class LandingPage extends JFrame {
             () -> cardLayout.show(screenPanel, START_OVER_SCREEN)
         );
         screenPanel.add(menuPage, MENU_SCREEN);
-        screenPanel.add(new CheckoutPage(cart), CHECKOUT_SCREEN);
+        screenPanel.add(new CheckoutPage(
+            cart,
+            () -> cardLayout.show(screenPanel, MENU_SCREEN),
+            () -> cardLayout.show(screenPanel, START_OVER_SCREEN),
+            () -> cardLayout.show(screenPanel, PAYMENT_OPTION_SCREEN)
+        ), CHECKOUT_SCREEN);
         screenPanel.add(new StartOver(
             () -> {
                 cart.clear();
@@ -158,8 +165,21 @@ public class LandingPage extends JFrame {
             () -> cardLayout.show(screenPanel, MENU_SCREEN)
         ), START_OVER_SCREEN);
 
-        screenPanel.add(new OrderReceipt(), ORDER_OPTION_SCREEN);
-        screenPanel.add(new MenuPage(null, null, null), "menu_page");
+        screenPanel.add(new PaymentOption(), PAYMENT_OPTION_SCREEN);
+
+        OrderReceipt receipt = new OrderReceipt();
+        screenPanel.add(receipt, RECEIPT_SCREEN);
+        // After the receipt is shown for a while, reset the kiosk for the next customer.
+        Timer receiptTimer = new Timer(10000, e -> {
+            cart.clear();
+            menuPage.setTotal(cart.getTotal());
+            cardLayout.show(screenPanel, LANDING_SCREEN);
+        });
+        receiptTimer.setRepeats(false);
+        receipt.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override public void componentShown(java.awt.event.ComponentEvent e) { receiptTimer.restart(); }
+            @Override public void componentHidden(java.awt.event.ComponentEvent e) { receiptTimer.stop(); }
+        });
         setContentPane(screenPanel);
         cardLayout.show(screenPanel, LANDING_SCREEN);
     }
