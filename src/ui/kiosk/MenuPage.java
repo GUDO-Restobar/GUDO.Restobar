@@ -91,7 +91,7 @@ public class MenuPage extends JPanel {
         JPanel logo = new JPanel();
         logo.setOpaque(false);
         logo.setPreferredSize(new Dimension(130, 150));
-        logo.add(new JLabel(scaledIcon("public/assets/logo/gudo-white-logo.png", 128, 128)));
+        logo.add(new JLabel(scaledIcon("public\\assets\\logo\\logo-circle.png", 128, 128)));
         sidebar.add(logo, BorderLayout.NORTH);
 
         JPanel tabs = new JPanel();

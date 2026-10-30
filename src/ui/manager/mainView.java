@@ -21,7 +21,7 @@ public class mainView extends JFrame {
 
     static final Color MAINWHITE = new Color(246, 246, 246);
     static final Color MAINORANGE = Color.decode("#EC5E02");
-    static final ImageIcon LOGO = new ImageIcon("public\\assets\\logo\\gudo-white-logo.png");
+    static final ImageIcon LOGO = new ImageIcon("public\\assets\\logo\\logo-circle.png");
     static final Font BOLD = loadFont("Montserrat/static/Montserrat-Bold.ttf");
 
     static final String TAB_HISTORY = "Order History";

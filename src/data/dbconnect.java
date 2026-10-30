@@ -7,7 +7,7 @@ public class dbconnect {
             "jdbc:mysql://localhost:3306/gudorestobardb";
 
     private static final String USER = "root";
-    private static final String PASSWORD = "JJthegreat_123"; //change password here if you have different password
+    private static final String PASSWORD = "root1234"; //change password here if you have different password
 
     public static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(URL, USER, PASSWORD);
