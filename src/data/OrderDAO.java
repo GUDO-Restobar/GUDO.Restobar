@@ -136,4 +136,119 @@ public final class OrderDAO {
             }
         }
     }
+
+    // ---------------------------------------------------------------- DELETE
+
+    /**
+     * Permanently deletes orders (the DELETE part of the project).
+     *
+     * PAYMENT and ORDER_DETAIL rows point to CUSTOMER_ORDER with foreign keys,
+     * so they are removed first, then the order itself. All in one transaction:
+     * either everything for every selected order is gone, or nothing changed.
+     * Stock is NOT given back - the food was already made/sold; this is only a
+     * clean-up of the records.
+     *
+     * @return how many orders were deleted
+     */
+    public static int deleteOrders(java.util.Collection<Integer> orderIDs) throws SQLException {
+        if (orderIDs == null || orderIDs.isEmpty()) return 0;
+
+        String[] statements = {
+            "DELETE FROM PAYMENT WHERE orderID = ?",
+            "DELETE FROM ORDER_DETAIL WHERE orderID = ?",
+            "DELETE FROM CUSTOMER_ORDER WHERE orderID = ?"
+        };
+
+        try (Connection conn = dbconnect.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                int deleted = 0;
+                for (int i = 0; i < statements.length; i++) {
+                    try (PreparedStatement ps = conn.prepareStatement(statements[i])) {
+                        for (int id : orderIDs) {
+                            ps.setInt(1, id);
+                            ps.addBatch();
+                        }
+                        int[] counts = ps.executeBatch();
+                        if (i == statements.length - 1) {
+                            for (int c : counts) deleted += (c == Statement.SUCCESS_NO_INFO ? 1 : c);
+                        }
+                    }
+                }
+                conn.commit();
+                return deleted;
+            } catch (SQLException | RuntimeException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        }
+    }
+
+    // --------------------------------------------------------------- RECEIPT
+
+    /** Everything the manager's "digital receipt" shows for one order. */
+    public static final class ReceiptData {
+        public int orderID;
+        public String date, time, orderType, paymentStatus, orderStatus;
+        public String method;                       // Cash / Cashless, or null if no payment row
+        public BigDecimal total = BigDecimal.ZERO;
+        public final java.util.List<Line> lines = new java.util.ArrayList<>();
+
+        public static final class Line {
+            public String name;
+            public int quantity;
+            public BigDecimal price;                // price of one item when it was ordered
+            public boolean water, utensils;
+            public BigDecimal subTotal() { return price.multiply(BigDecimal.valueOf(quantity)); }
+        }
+    }
+
+    /** Loads one order with its items. Returns null if the order no longer exists. */
+    public static ReceiptData loadReceipt(int orderID) throws SQLException {
+        ReceiptData data = new ReceiptData();
+        data.orderID = orderID;
+        try (Connection conn = dbconnect.getConnection()) {
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT orderDate, orderTime, orderType, paymentStatus, orderStatus "
+                  + "FROM CUSTOMER_ORDER WHERE orderID = ?")) {
+                ps.setInt(1, orderID);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) return null;
+                    data.date = rs.getString("orderDate");
+                    data.time = rs.getString("orderTime");
+                    data.orderType = rs.getString("orderType");
+                    data.paymentStatus = rs.getString("paymentStatus");
+                    data.orderStatus = rs.getString("orderStatus");
+                }
+            }
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT method FROM PAYMENT WHERE orderID = ? ORDER BY paymentID LIMIT 1")) {
+                ps.setInt(1, orderID);
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) data.method = rs.getString("method");
+                }
+            }
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "SELECT m.itemName, d.quantity, d.price, d.wantWater, d.wantUtensils "
+                  + "FROM ORDER_DETAIL d JOIN MENU_ITEM m ON m.itemID = d.itemID "
+                  + "WHERE d.orderID = ? ORDER BY d.detailID")) {
+                ps.setInt(1, orderID);
+                try (ResultSet rs = ps.executeQuery()) {
+                    while (rs.next()) {
+                        ReceiptData.Line line = new ReceiptData.Line();
+                        line.name = rs.getString("itemName");
+                        line.quantity = rs.getInt("quantity");
+                        line.price = rs.getBigDecimal("price");
+                        line.water = rs.getBoolean("wantWater");
+                        line.utensils = rs.getBoolean("wantUtensils");
+                        data.lines.add(line);
+                        data.total = data.total.add(line.subTotal());
+                    }
+                }
+            }
+        }
+        return data;
+    }
 }
