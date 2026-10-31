@@ -1,4 +1,5 @@
 -- SQLBook: Code
+-- Active: 1790556296860@@127.0.0.1@3306@gudorestobardb
 -- Task 4: Create database
 CREATE DATABASE IF NOT EXISTS gudorestobardb;
 
