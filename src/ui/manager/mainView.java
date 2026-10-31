@@ -32,6 +32,7 @@ public class mainView extends JFrame {
     static final String TAB_STOCK = "Edit Stock Items";
 
     private static final int ROWS_PER_PAGE = 15;
+    private static final int COL_STATUS = 6;   // "Order Status" column (dropdown)
 
     public mainView() {
         setTitle("Gudo Restobar Manager");
@@ -80,7 +81,7 @@ public class mainView extends JFrame {
 
         String[] columns = {"Order ID", "Order Date", "Order Time", "Order Type", "Total Amount", "Payment Status", "Order Status"};
         DefaultTableModel tableModel = new DefaultTableModel(columns, 0) {
-            @Override public boolean isCellEditable(int row, int column) { return false; }
+            @Override public boolean isCellEditable(int row, int column) { return column == COL_STATUS; }
         };
         JTable table = new JTable(tableModel);
         styleTable(table);
@@ -137,6 +138,45 @@ public class mainView extends JFrame {
             pagination.repaint();
         };
         refresh[0].run();
+
+        // ---- Order Status dropdown: picking a new value saves it to the database right away.
+        boolean[] revert = {false};
+        tableModel.addTableModelListener(e -> {
+            if (revert[0] || e.getType() != javax.swing.event.TableModelEvent.UPDATE
+                    || e.getColumn() != COL_STATUS || e.getFirstRow() < 0) return;
+            int row = e.getFirstRow();
+            int orderID = (Integer) tableModel.getValueAt(row, 0);
+            String newStatus = String.valueOf(tableModel.getValueAt(row, COL_STATUS));
+
+            // the status this order had before the change (from our copy of the data)
+            Object[] stored = null;
+            for (Object[] r : allRows) if (((Integer) r[0]) == orderID) stored = r;
+            if (stored == null || newStatus.equals(stored[COL_STATUS])) return;
+            Object[] storedRow = stored;
+            String oldStatus = String.valueOf(storedRow[COL_STATUS]);
+
+            new SwingWorker<Boolean, Void>() {
+                @Override protected Boolean doInBackground() throws Exception {
+                    return OrderDAO.updateOrderStatus(orderID, newStatus);
+                }
+                @Override protected void done() {
+                    try {
+                        if (get()) { storedRow[COL_STATUS] = newStatus; return; }   // saved
+                        JOptionPane.showMessageDialog(view, "This order no longer exists.");
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                        JOptionPane.showMessageDialog(view, "Could not update the status: " + ex.getMessage(),
+                            "Update failed", JOptionPane.ERROR_MESSAGE);
+                    }
+                    // not saved: put the old value back on screen
+                    revert[0] = true;
+                    for (int r = 0; r < tableModel.getRowCount(); r++) {
+                        if (((Integer) tableModel.getValueAt(r, 0)) == orderID) tableModel.setValueAt(oldStatus, r, COL_STATUS);
+                    }
+                    revert[0] = false;
+                }
+            }.execute();
+        });
 
         // Real time: whenever the kiosk saves an order (or an order's status changes),
         // reload the rows and redraw the current page. Only runs while this view is on screen.
@@ -302,6 +342,35 @@ public class mainView extends JFrame {
         table.setDefaultRenderer(Object.class, cells);
         table.setDefaultRenderer(Integer.class, cells);
 
+        // Order Status: coloured text with a little dropdown arrow; click it to pick another status.
+        javax.swing.table.TableCellRenderer statusRenderer = new javax.swing.table.DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable t, Object v, boolean sel, boolean foc, int r, int c) {
+                JLabel base = (JLabel) super.getTableCellRendererComponent(t, v, sel, false, r, c);
+                return statusLabel(String.valueOf(v), sel ? t.getSelectionBackground() : Color.WHITE);
+            }
+        };
+        JComboBox<String> statusBox = new JComboBox<>(OrderDAO.ORDER_STATUSES);
+        statusBox.setFont(BOLD.deriveFont(13f));
+        statusBox.setBackground(Color.WHITE);
+        statusBox.setForeground(MAINORANGE);
+        statusBox.setFocusable(false);
+        statusBox.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 4));
+        statusBox.setRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> l, Object v, int i, boolean sel, boolean foc) {
+                JLabel x = (JLabel) super.getListCellRendererComponent(l, v, i, sel, false);
+                x.setFont(BOLD.deriveFont(13f));
+                x.setForeground(statusColor(String.valueOf(v)));
+                x.setBackground(sel ? new Color(253, 235, 222) : Color.WHITE);
+                x.setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
+                return x;
+            }
+        });
+        javax.swing.table.TableColumn statusColumn = table.getColumnModel().getColumn(COL_STATUS);
+        statusColumn.setCellRenderer(statusRenderer);
+        statusColumn.setCellEditor(new DefaultCellEditor(statusBox));
+
         // underline + hand cursor while hovering an Order ID
         table.addMouseMotionListener(new java.awt.event.MouseMotionAdapter() {
             @Override public void mouseMoved(java.awt.event.MouseEvent e) {
@@ -317,6 +386,37 @@ public class mainView extends JFrame {
                 if (hoverRow[0] != -1) { hoverRow[0] = -1; table.repaint(); }
             }
         });
+    }
+
+    private static Color statusColor(String status) {
+        switch (status) {
+            case "Completed": return new Color(46, 125, 50);    // green
+            case "Served":    return new Color(21, 101, 192);   // blue
+            default:          return MAINORANGE;                // Preparing
+        }
+    }
+
+    /** Status text in its colour, with a small drop-down triangle on the right. */
+    private static JLabel statusLabel(String status, Color background) {
+        JLabel l = new JLabel(status) {
+            @Override protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(getForeground());
+                int x = getWidth() - 22, y = getHeight() / 2 - 2;
+                g2.fillPolygon(new int[]{x, x + 9, x + 4}, new int[]{y, y, y + 5}, 3);
+                g2.dispose();
+            }
+        };
+        l.setOpaque(true);
+        l.setBackground(background);
+        l.setForeground(statusColor(status));
+        l.setFont(BOLD.deriveFont(13f));
+        l.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createMatteBorder(0, 0, 1, 0, ROW_LINE),
+            BorderFactory.createEmptyBorder(0, 16, 0, 8)));
+        return l;
     }
 
     /** Clicking a cell in the Order ID column opens that order's receipt. */

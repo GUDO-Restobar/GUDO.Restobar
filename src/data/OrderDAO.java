@@ -251,4 +251,24 @@ public final class OrderDAO {
         }
         return data;
     }
+
+    // ---------------------------------------------------------- STATUS UPDATE
+
+    /** The values CUSTOMER_ORDER.orderStatus accepts (same as its CHECK constraint). */
+    public static final String[] ORDER_STATUSES = {"Preparing", "Served", "Completed"};
+
+    /** Changes one order's status. Returns false if the order no longer exists. */
+    public static boolean updateOrderStatus(int orderID, String status) throws SQLException {
+        boolean valid = false;
+        for (String allowed : ORDER_STATUSES) if (allowed.equals(status)) valid = true;
+        if (!valid) throw new IllegalArgumentException("Unknown order status: " + status);
+
+        try (Connection conn = dbconnect.getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                 "UPDATE CUSTOMER_ORDER SET orderStatus = ? WHERE orderID = ?")) {
+            ps.setString(1, status);
+            ps.setInt(2, orderID);
+            return ps.executeUpdate() > 0;
+        }
+    }
 }
