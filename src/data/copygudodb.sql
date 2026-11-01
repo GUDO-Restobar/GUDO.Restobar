@@ -1,15 +1,17 @@
 -- SQLBook: Code
--- Active: 1790556296860@@127.0.0.1@3306@gudorestobardb
--- Task 4: Create database
+-- Active: 1793204365560@@mysql-27a36514-gudorestobar.b.aivencloud.com@24673@gudorestobardb
+
+
+-- COPYGUDODB.SQL WILL BE USED ONLY FOR LOCALTESTING
 CREATE DATABASE IF NOT EXISTS gudorestobardb;
 
 USE gudorestobardb;
 
 -- only use for emergencies
--- DROP TABLE PAYMENT;
--- DROP TABLE ORDER_DETAIL;
--- DROP TABLE CUSTOMER_ORDER;
--- DROP TABLE MENU_ITEM;
+DROP TABLE PAYMENT;
+DROP TABLE ORDER_DETAIL;
+DROP TABLE CUSTOMER_ORDER;
+DROP TABLE MENU_ITEM;
 
 CREATE TABLE MENU_ITEM (
   itemID INT PRIMARY KEY,
