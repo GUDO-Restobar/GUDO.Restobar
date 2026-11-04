@@ -3,6 +3,7 @@ package ui.manager;
 import java.awt.*;
 import data.DbWatcher;
 import data.dbconnect;
+import util.KioskScrollBarUI;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,6 +18,9 @@ public class EditStockItems extends JFrame {
     private static final Color MAINWHITE = mainView.MAINWHITE;
     private static final Color MAINORANGE = mainView.MAINORANGE;
     private static final Font BOLD = mainView.BOLD;
+    // Same scroll bar images the kiosk MenuPage uses .
+    private static final String THUMB = "public/assets/scrollbar/scroll-thumb.png";
+    private static final String TRACK = "public/assets/scrollbar/scroll-track.png";
     private static final String IMG = "public/assets/menu/";
 
     private final CardLayout cardLayout = new CardLayout();
@@ -218,8 +222,15 @@ public class EditStockItems extends JFrame {
             ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scroll.setOpaque(false);
         scroll.getViewport().setBackground(MAINWHITE);
-        scroll.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        scroll.setBorder(null);                       // like MenuPage; the margin is on the panel instead
+        panel.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
+        // Scroll bar set up exactly like the kiosk MenuPage.
+        JScrollBar bar = scroll.getVerticalScrollBar();
+        bar.setUnitIncrement(24);
+        bar.setUI(new KioskScrollBarUI(THUMB, TRACK));
+        bar.setPreferredSize(new Dimension(26, 0));
+        bar.setBorder(BorderFactory.createEmptyBorder(6, 2, 6, 8));
+        bar.setBackground(MAINWHITE);
         panel.add(scroll, BorderLayout.CENTER);
         view.add(panel);
 
@@ -330,9 +341,18 @@ public class EditStockItems extends JFrame {
             refresh();
         }
 
+        /**
+         * The number between - and + is the CHANGE to apply (+5 = add 5, -3 = remove 3),
+         * not the total. "In stock" is what the database has now; once there is a change
+         * it also previews the new total ("In stock: 10 -> 15").
+         */
         void refresh() {
-            count.setText(String.valueOf(item.stock));
-            inStock.setText("In stock: " + item.committed);
+            int delta = item.stock - item.committed;
+            count.setText(delta > 0 ? "+" + delta : delta < 0 ? "\u2212" + (-delta) : "0");
+            count.setForeground(delta > 0 ? MAINORANGE : delta < 0 ? new Color(198, 40, 40) : Color.BLACK);
+            inStock.setText(delta == 0
+                ? "In stock: " + item.committed
+                : "In stock: " + item.committed + " \u2192 " + item.stock);
         }
 
         /**
@@ -347,7 +367,7 @@ public class EditStockItems extends JFrame {
             plus.setBounds(w - 34, 10, 24, 24);
             count.setBounds(w - 92, 8, 56, 28);
             minus.setBounds(w - 120, 10, 24, 24);
-            inStock.setBounds(w - 130, 42, 120, 16);
+            inStock.setBounds(w - 170, 42, 160, 16);
             name.setBounds(60, 12, Math.max(60, w - 190), 18);
             price.setBounds(60, 32, 120, 18);
         }

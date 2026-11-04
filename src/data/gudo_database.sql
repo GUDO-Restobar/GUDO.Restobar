@@ -1,12 +1,13 @@
--- Active: 1789518258812@@127.0.0.1@3306@gudorestobardb
 -- SQLBook: Code
--- Active
+-- Active: 1793204365560@@mysql-27a36514-gudorestobar.b.aivencloud.com@24673@defaultdb
 
-
+-- THIS DATABASE SQL FILE IS CONNECTED TO THE CLOUD DATABASE
 -- Task 4: Create database
-CREATE DATABASE IF NOT EXISTS gudorestobardb;
+CREATE DATABASE IF NOT EXISTS defaultdb;
 
-USE gudorestobardb;
+USE defaultdb;
+--defaultdb for cloud
+--gudorestobardb for localhost
 
 -- only use for emergencies
 -- DROP TABLE PAYMENT;
@@ -53,8 +54,8 @@ CREATE TABLE ORDER_DETAIL (
 
     CONSTRAINT chk_positive_subTotal CHECK (subTotal > 0.00),
 
-    FOREIGN KEY (orderID) REFERENCES customer_order(orderID),
-    FOREIGN KEY (itemID) REFERENCES menu_item(itemID)
+    FOREIGN KEY (orderID) REFERENCES CUSTOMER_ORDER(orderID),
+    FOREIGN KEY (itemID) REFERENCES MENU_ITEM(itemID)
 );
 
 CREATE TABLE PAYMENT (
@@ -67,7 +68,7 @@ CREATE TABLE PAYMENT (
   amount DECIMAL(10,2),
   paymentDate DATE,
 
-    FOREIGN KEY (orderID) REFERENCES customer_order(orderID)
+    FOREIGN KEY (orderID) REFERENCES CUSTOMER_ORDER(orderID)
 );
 
 -- Task 5: Populate tables with sufficient records (ALL PREDEFINED RECORDS)
@@ -94,7 +95,7 @@ INSERT INTO MENU_ITEM
   (204,     'JNuggets',                           'Snacks',   189.00,     20,             'Available'),
   (205,     'Snhackathon Package',                'Snacks',   399.00,     20,             'Available'),
 
-  (301,     "'Jandro Cola",                       'Drinks',   75.00,      20,             'Available'),
+  (301,     'Jandro Cola',                        'Drinks',   75.00,      20,             'Available'),
   (302,     'San Gudo Light',                     'Drinks',   89.00,      20,             'Available'),
   (303,     'San Gudo',                           'Drinks',   100.00,     20,             'Available'),
   (304,     'Sam Smoothie',                       'Drinks',   159.00,     20,             'Available'),
