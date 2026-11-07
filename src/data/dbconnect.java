@@ -4,6 +4,7 @@ import java.sql.*;
 
 public class dbconnect {
     // DONT CHANGE ANYTHING HERE
+    // DO NOT SHARE THESE DETAILS, THESE ARE CONFIDENTIAL AND ONLY FOR THE GROUP ONLY
     //----- TURN THESE TO COMMENT IF WANT NYO MAGTESTING2 SA LOCAL HOST -----
     private static final String URL =
             "jdbc:mysql://mysql-27a36514-gudorestobar.b.aivencloud.com:24673/defaultdb?sslMode=REQUIRED";
