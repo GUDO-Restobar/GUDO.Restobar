@@ -6,6 +6,7 @@ import java.util.Map;
 import javax.swing.*;
 import ui.manager.EditStockItems;
 import ui.manager.OrderHistory;
+import ui.manager.SalesSummary;
 
 /**
  * Manager window. The LEFT side is the sidebar (logo + tabs) and lives here.
@@ -16,6 +17,7 @@ public class ManagerMain extends JFrame {
 
     private static final String TAB_HISTORY = "Order History";
     private static final String TAB_STOCK = "Edit Stock Items";
+    private static final String TAB_SALES = "Sales Summary";
 
     private final CardLayout cardLayout = new CardLayout();
     private final JPanel content = new JPanel(cardLayout);
@@ -33,6 +35,7 @@ public class ManagerMain extends JFrame {
         // right side: one card per tab (to add a tab: add a panel class here + a name in the sidebar)
         content.add(new OrderHistory(), TAB_HISTORY);
         content.add(new EditStockItems(), TAB_STOCK);
+        content.add(new SalesSummary(), TAB_SALES);
         content.setBounds(331, 0, 1008, 1040);
 
         JPanel sidebar = buildSidebar();
@@ -71,7 +74,7 @@ public class ManagerMain extends JFrame {
         sidebar.add(logo);
         sidebar.add(welcome);
 
-        String[] tabs = {TAB_HISTORY, TAB_STOCK};
+        String[] tabs = {TAB_HISTORY, TAB_STOCK, TAB_SALES};
         for (int i = 0; i < tabs.length; i++) {
             String name = tabs[i];
             JButton button = tabButton(name);
