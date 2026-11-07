@@ -33,7 +33,7 @@ public class SalesSummary extends JPanel {
 
     private static final Color ROW_LINE = new Color(232, 232, 232);
     private static final Color TEXT_GRAY = new Color(110, 110, 110);
-    private static final Color GREEN = new Color(46, 125, 50);
+    private static final Color GREEN = new Color(79, 138, 60);
     private static final Color RED = new Color(198, 40, 40);
     private static final String THUMB = "public/assets/scrollbar/scroll-thumb.png";
     private static final String TRACK = "public/assets/scrollbar/scroll-track.png";
@@ -45,15 +45,14 @@ public class SalesSummary extends JPanel {
 
     /** One business question. "?" in the SQL are filled from the parameter control. */
     private static final class Query {
-        final String question, feature, sql;
+        final String question, sql;
         final Param param;
         final String paramLabel;
         final int paramDefault, paramMin, paramMax;
 
-        Query(String question, String feature, String sql,
+        Query(String question, String sql,
               Param param, String paramLabel, int paramDefault, int paramMin, int paramMax) {
             this.question = question;
-            this.feature = feature;
             this.sql = sql;
             this.param = param;
             this.paramLabel = paramLabel;
@@ -62,20 +61,20 @@ public class SalesSummary extends JPanel {
             this.paramMax = paramMax;
         }
 
-        Query(String question, String feature, String sql) {
-            this(question, feature, sql, Param.NONE, null, 0, 0, 0);
+        Query(String question, String sql) {
+            this(question, sql, Param.NONE, null, 0, 0, 0);
         }
     }
 
     private static final Query[] QUERIES = {
         // 1 - WHERE
-        new Query("Which menu items are low on stock?", "WHERE",
+        new Query("Which menu items are low on stock?",
             "SELECT itemID AS 'Item ID', itemName AS 'Item', category AS 'Category', stockQuantity AS 'In Stock' "
           + "FROM MENU_ITEM WHERE stockQuantity < ? ORDER BY stockQuantity, itemID",
             Param.NUMBER, "Reorder level (below)", REORDER_LEVEL, 0, 1000),
 
         // 2 - JOIN + COUNT + SUM + GROUP BY (+ WHERE on the month)
-        new Query("How much did we earn each day this month?", "JOIN + SUM + GROUP BY",
+        new Query("How much did we earn each day this month?",
             "SELECT o.orderDate AS 'Date', COUNT(DISTINCT o.orderID) AS 'Orders', SUM(d.subTotal) AS 'Total Sales' "
           + "FROM CUSTOMER_ORDER o JOIN ORDER_DETAIL d ON d.orderID = o.orderID "
           + "WHERE YEAR(o.orderDate) = ? AND MONTH(o.orderDate) = ? "
@@ -83,7 +82,7 @@ public class SalesSummary extends JPanel {
             Param.MONTH, "Month", 0, 0, 0),
 
         // 3 - JOIN + SUM + GROUP BY + ORDER BY + LIMIT
-        new Query("What are the five best-selling items?", "JOIN + SUM + GROUP BY + ORDER BY + LIMIT",
+        new Query("What are the five best-selling items?",
             "SELECT m.itemName AS 'Item', m.category AS 'Category', SUM(d.quantity) AS 'Units Sold', "
           + "SUM(d.subTotal) AS 'Total Sales' "
           + "FROM ORDER_DETAIL d JOIN MENU_ITEM m ON m.itemID = d.itemID "
@@ -91,32 +90,32 @@ public class SalesSummary extends JPanel {
           + "ORDER BY SUM(d.quantity) DESC, m.itemName LIMIT 5"),
 
         // 4 - Subquery
-        new Query("Which menu items have never been ordered?", "Subquery",
+        new Query("Which menu items have never been ordered?",
             "SELECT m.itemID AS 'Item ID', m.itemName AS 'Item', m.category AS 'Category', m.unitPrice AS 'Price' "
           + "FROM MENU_ITEM m WHERE m.itemID NOT IN (SELECT d.itemID FROM ORDER_DETAIL d) "
           + "ORDER BY m.itemID"),
 
         // 5 - JOIN + SUM + GROUP BY
-        new Query("Which category generated the highest sales?", "JOIN + SUM + GROUP BY",
+        new Query("Which category generated the highest sales?",
             "SELECT m.category AS 'Category', SUM(d.subTotal) AS 'Total Sales' "
           + "FROM ORDER_DETAIL d JOIN MENU_ITEM m ON m.itemID = d.itemID "
           + "GROUP BY m.category ORDER BY SUM(d.subTotal) DESC"),
 
         // 6 - JOIN + COUNT + SUM + GROUP BY
-        new Query("Dine-in or takeout: which brings in more?", "JOIN + COUNT + SUM + GROUP BY",
+        new Query("Dine-in or takeout: which brings in more?",
             "SELECT o.orderType AS 'Order Type', COUNT(DISTINCT o.orderID) AS 'Orders', "
           + "SUM(d.subTotal) AS 'Total Sales' "
           + "FROM CUSTOMER_ORDER o JOIN ORDER_DETAIL d ON d.orderID = o.orderID "
           + "GROUP BY o.orderType ORDER BY SUM(d.subTotal) DESC"),
 
         // 7 - JOIN + COUNT + GROUP BY
-        new Query("Which payment method is used most?", "JOIN + COUNT + GROUP BY",
+        new Query("Which payment method is used most?",
             "SELECT p.method AS 'Payment Method', COUNT(*) AS 'Orders' "
           + "FROM CUSTOMER_ORDER o JOIN PAYMENT p ON p.orderID = o.orderID "
           + "GROUP BY p.method ORDER BY COUNT(*) DESC"),
 
         // 8 - JOIN + WHERE
-        new Query("Which orders are unpaid or not yet completed?", "JOIN + WHERE",
+        new Query("Which orders are unpaid or not yet completed?",
             "SELECT o.orderID AS 'Order ID', o.orderDate AS 'Date', o.orderType AS 'Type', "
           + "o.paymentStatus AS 'Payment Status', o.orderStatus AS 'Order Status', p.amount AS 'Amount' "
           + "FROM CUSTOMER_ORDER o JOIN PAYMENT p ON p.orderID = o.orderID "
@@ -124,7 +123,7 @@ public class SalesSummary extends JPanel {
           + "ORDER BY o.orderID DESC"),
 
         // 9 - Subquery + AVG + HAVING
-        new Query("Which orders are bigger than the average order?", "Subquery + AVG + HAVING",
+        new Query("Which orders are bigger than the average order?",
             "SELECT o.orderID AS 'Order ID', o.orderDate AS 'Date', o.orderType AS 'Type', "
           + "SUM(d.subTotal) AS 'Order Total' "
           + "FROM CUSTOMER_ORDER o JOIN ORDER_DETAIL d ON d.orderID = o.orderID "
@@ -134,7 +133,7 @@ public class SalesSummary extends JPanel {
           + "ORDER BY SUM(d.subTotal) DESC"),
 
         // 10 - GROUP BY + HAVING
-        new Query("Which items were ordered more than N times?", "JOIN + GROUP BY + HAVING",
+        new Query("Which items were ordered more than N times?",
             "SELECT m.itemName AS 'Item', m.category AS 'Category', SUM(d.quantity) AS 'Times Ordered' "
           + "FROM ORDER_DETAIL d JOIN MENU_ITEM m ON m.itemID = d.itemID "
           + "GROUP BY m.itemID, m.itemName, m.category HAVING SUM(d.quantity) > ? "
@@ -293,21 +292,21 @@ public class SalesSummary extends JPanel {
         card.setLayout(null);
         card.setBounds(x, 104, 222, 92);
 
-        JLabel t = new JLabel(title);
-        t.setFont(REGULAR.deriveFont(12f));
-        t.setForeground(TEXT_GRAY);
-        t.setBounds(18, 10, 190, 16);
+        JLabel titleKPI = new JLabel(title);
+        titleKPI.setFont(REGULAR.deriveFont(12f));
+        titleKPI.setForeground(TEXT_GRAY);
+        titleKPI.setBounds(18, 10, 190, 16);
         value.setFont(BOLD.deriveFont(26f));
         value.setForeground(valueColor);
         value.setBounds(18, 28, 190, 36);
-        JLabel c = new JLabel(caption);
-        c.setFont(REGULAR.deriveFont(11f));
-        c.setForeground(TEXT_GRAY);
-        c.setBounds(18, 66, 190, 16);
+        JLabel captionKPI = new JLabel(caption);
+        captionKPI.setFont(REGULAR.deriveFont(11f));
+        captionKPI.setForeground(TEXT_GRAY);
+        captionKPI.setBounds(18, 66, 190, 16);
 
-        card.add(t);
+        card.add(titleKPI);
         card.add(value);
-        card.add(c);
+        card.add(captionKPI);
         add(card);
     }
 
@@ -331,26 +330,26 @@ public class SalesSummary extends JPanel {
     }
 
     private static Dashboard loadDashboard() throws SQLException {
-        Dashboard d = new Dashboard();
+        Dashboard dashBoard = new Dashboard();
         try (Connection conn = dbconnect.getConnection(); Statement st = conn.createStatement()) {
-            try (ResultSet rs = st.executeQuery(
+            try (ResultSet resultSet = st.executeQuery(
                     "SELECT COALESCE(SUM(amount), 0) FROM PAYMENT WHERE transactionStatus = 'Successful'")) {
-                if (rs.next()) d.totalSales = rs.getDouble(1);
+                if (resultSet.next()) dashBoard.totalSales = resultSet.getDouble(1);
             }
-            try (ResultSet rs = st.executeQuery("SELECT COUNT(*) FROM CUSTOMER_ORDER")) {
-                if (rs.next()) d.orders = rs.getInt(1);
+            try (ResultSet resultSet = st.executeQuery("SELECT COUNT(*) FROM CUSTOMER_ORDER")) {
+                if (resultSet.next()) dashBoard.orders = resultSet.getInt(1);
             }
-            try (ResultSet rs = st.executeQuery(
+            try (ResultSet resultSet = st.executeQuery(
                     "SELECT COALESCE(AVG(x.total), 0) FROM "
                   + "(SELECT SUM(subTotal) AS total FROM ORDER_DETAIL GROUP BY orderID) x")) {
-                if (rs.next()) d.averageOrder = rs.getDouble(1);
+                if (resultSet.next()) dashBoard.averageOrder = resultSet.getDouble(1);
             }
-            try (ResultSet rs = st.executeQuery(
+            try (ResultSet resultSet = st.executeQuery(
                     "SELECT COUNT(*) FROM MENU_ITEM WHERE stockQuantity < " + REORDER_LEVEL)) {
-                if (rs.next()) d.lowStock = rs.getInt(1);
+                if (resultSet.next()) dashBoard.lowStock = resultSet.getInt(1);
             }
         }
-        return d;
+        return dashBoard;
     }
 
     // ------------------------------------------------------------------ running a question
@@ -359,28 +358,28 @@ public class SalesSummary extends JPanel {
     private void selectQuery() {
         int row = questionList.getSelectedIndex();
         if (row < 0) return;
-        Query q = QUERIES[row];
+        Query query = QUERIES[row];
 
-        paramLabel.setText(q.param == Param.NONE ? "" : q.paramLabel);
-        numberSpinner.setVisible(q.param == Param.NUMBER);
-        monthBox.setVisible(q.param == Param.MONTH);
-        paramLabel.setVisible(q.param != Param.NONE);
-        if (q.param == Param.NUMBER) {
+        paramLabel.setText(query.param == Param.NONE ? "" : query.paramLabel);
+        numberSpinner.setVisible(query.param == Param.NUMBER);
+        monthBox.setVisible(query.param == Param.MONTH);
+        paramLabel.setVisible(query.param != Param.NONE);
+        if (query.param == Param.NUMBER) {
             // Only whole numbers inside a sensible range are accepted; anything else is rejected by the spinner.
-            numberSpinner.setModel(new SpinnerNumberModel(q.paramDefault, q.paramMin, q.paramMax, 1));
+            numberSpinner.setModel(new SpinnerNumberModel(query.paramDefault, query.paramMin, query.paramMax, 1));
         }
-        if (q.param == Param.MONTH) monthBox.setSelectedIndex(0);
+        if (query.param == Param.MONTH) monthBox.setSelectedIndex(0);
         paramBar.revalidate();
         paramBar.repaint();
 
-        resultTitle.setText("Q" + (row + 1) + ".  " + q.question);
+        resultTitle.setText("Q" + (row + 1) + ".  " + query.question);
         runSelected();
     }
 
     private void runSelected() {
         int row = questionList.getSelectedIndex();
         if (row < 0) return;
-        Query q = QUERIES[row];
+        Query query = QUERIES[row];
         int run = ++runCounter;
 
         // read the controls on the Swing thread, query on a background thread
@@ -389,12 +388,12 @@ public class SalesSummary extends JPanel {
 
         new SwingWorker<Result, Void>() {
             @Override protected Result doInBackground() throws Exception {
-                return runQuery(q, number, month);
+                return runQuery(query, number, month);
             }
             @Override protected void done() {
                 if (run != runCounter) return;            // a newer query is already running
                 try {
-                    show(get(), q);
+                    show(get(), query);
                 } catch (Exception ex) {
                     ex.printStackTrace();
                     resultModel.setDataVector(new Object[0][0], new Object[0]);
@@ -405,27 +404,27 @@ public class SalesSummary extends JPanel {
         }.execute();
     }
 
-    private static Result runQuery(Query q, int number, YearMonth month) throws SQLException {
+    private static Result runQuery(Query query, int number, YearMonth month) throws SQLException {
         Result result = new Result();
         try (Connection conn = dbconnect.getConnection();
-             PreparedStatement ps = conn.prepareStatement(q.sql)) {
-            if (q.param == Param.NUMBER) {
+             PreparedStatement ps = conn.prepareStatement(query.sql)) {
+            if (query.param == Param.NUMBER) {
                 ps.setInt(1, number);
-            } else if (q.param == Param.MONTH) {
+            } else if (query.param == Param.MONTH) {
                 ps.setInt(1, month.getYear());
                 ps.setInt(2, month.getMonthValue());
             }
-            try (ResultSet rs = ps.executeQuery()) {
-                ResultSetMetaData md = rs.getMetaData();
-                int n = md.getColumnCount();
-                for (int i = 1; i <= n; i++) result.columns.add(md.getColumnLabel(i));
-                while (rs.next()) {
-                    Object[] row = new Object[n];
-                    for (int i = 1; i <= n; i++) {
-                        Object v = rs.getObject(i);
-                        row[i - 1] = isMoney(result.columns.get(i - 1)) && v instanceof Number
-                            ? money(((Number) v).doubleValue())
-                            : (v instanceof BigDecimal ? v.toString() : v);
+            try (ResultSet resultSet = ps.executeQuery()) {
+                ResultSetMetaData md = resultSet.getMetaData();
+                int num = md.getColumnCount();
+                for (int i = 1; i <= num; i++) result.columns.add(md.getColumnLabel(i));
+                while (resultSet.next()) {
+                    Object[] row = new Object[num];
+                    for (int i = 1; i <= num; i++) {
+                        Object obj = resultSet.getObject(i);
+                        row[i - 1] = isMoney(result.columns.get(i - 1)) && obj instanceof Number
+                            ? money(((Number) obj).doubleValue())
+                            : (obj instanceof BigDecimal ? obj.toString() : obj);
                     }
                     result.rows.add(row);
                 }
@@ -434,11 +433,11 @@ public class SalesSummary extends JPanel {
         return result;
     }
 
-    private void show(Result result, Query q) {
+    private void show(Result result, Query query) {
         resultModel.setDataVector(result.rows.toArray(new Object[0][]), result.columns.toArray());
         status.setForeground(TEXT_GRAY);
         if (result.rows.isEmpty()) {
-            status.setText("No rows match" + (q.param == Param.NONE ? "." : " – try changing the value above."));
+            status.setText("No rows match" + (query.param == Param.NONE ? "." : " – try changing the value above."));
         } else {
             status.setText(result.rows.size() + (result.rows.size() == 1 ? " row" : " rows"));
         }
@@ -450,17 +449,17 @@ public class SalesSummary extends JPanel {
         return label.contains("Amount") || label.contains("Sales") || label.contains("Price") || label.contains("Total");
     }
 
-    private static String money(double v) {
-        return "₱" + String.format("%,.2f", v);
+    private static String money(double amount) {
+        return "₱" + String.format("%,.2f", amount);
     }
 
-    private static String formatMonth(YearMonth ym) {
-        return ym == null ? "" : ym.format(DateTimeFormatter.ofPattern("MMMM yyyy"));
+    private static String formatMonth(YearMonth yearMon) {
+        return yearMon == null ? "" : yearMon.format(DateTimeFormatter.ofPattern("MMMM yyyy"));
     }
 
-    private static String rootMessage(Throwable t) {
-        while (t.getCause() != null) t = t.getCause();
-        return t.getMessage();
+    private static String rootMessage(Throwable rootMssg) {
+        while (rootMssg.getCause() != null) rootMssg = rootMssg.getCause();
+        return rootMssg.getMessage();
     }
 
     /** Orange header, white rows with thin dividers - same look as the Order History table. */
@@ -480,30 +479,30 @@ public class SalesSummary extends JPanel {
         header.setDefaultRenderer(new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable t, Object v, boolean sel, boolean foc, int r, int c) {
-                JLabel l = (JLabel) super.getTableCellRendererComponent(t, v, false, false, r, c);
-                l.setFont(BOLD.deriveFont(12f));
-                l.setForeground(MAINWHITE);
-                l.setBackground(MAINORANGE);
-                l.setOpaque(true);
-                l.setHorizontalAlignment(SwingConstants.LEFT);
-                l.setBorder(BorderFactory.createEmptyBorder(0, 14, 0, 8));
-                return l;
+                JLabel headerLabel = (JLabel) super.getTableCellRendererComponent(t, v, false, false, r, c);
+                headerLabel.setFont(BOLD.deriveFont(12f));
+                headerLabel.setForeground(MAINWHITE);
+                headerLabel.setBackground(MAINORANGE);
+                headerLabel.setOpaque(true);
+                headerLabel.setHorizontalAlignment(SwingConstants.LEFT);
+                headerLabel.setBorder(BorderFactory.createEmptyBorder(0, 14, 0, 8));
+                return headerLabel;
             }
         });
 
         DefaultTableCellRenderer cells = new DefaultTableCellRenderer() {
             @Override
             public Component getTableCellRendererComponent(JTable t, Object v, boolean sel, boolean foc, int r, int c) {
-                JLabel l = (JLabel) super.getTableCellRendererComponent(t, v, false, false, r, c);
-                l.setBackground(Color.WHITE);
-                l.setHorizontalAlignment(SwingConstants.LEFT);
-                l.setBorder(BorderFactory.createCompoundBorder(
+                JLabel cellsLabel = (JLabel) super.getTableCellRendererComponent(t, v, false, false, r, c);
+                cellsLabel.setBackground(Color.WHITE);
+                cellsLabel.setHorizontalAlignment(SwingConstants.LEFT);
+                cellsLabel.setBorder(BorderFactory.createCompoundBorder(
                     BorderFactory.createMatteBorder(0, 0, 1, 0, ROW_LINE),
                     BorderFactory.createEmptyBorder(0, 14, 0, 8)));
                 boolean money = isMoney(t.getColumnName(c));
-                l.setFont((money ? BOLD : REGULAR).deriveFont(13f));
-                l.setForeground(money ? Color.BLACK : new Color(70, 70, 70));
-                return l;
+                cellsLabel.setFont((money ? BOLD : REGULAR).deriveFont(13f));
+                cellsLabel.setForeground(money ? Color.BLACK : new Color(70, 70, 70));
+                return cellsLabel;
             }
         };
         table.setDefaultRenderer(Object.class, cells);
@@ -517,13 +516,13 @@ public class SalesSummary extends JPanel {
     private static class Card extends JPanel {
         Card() { setOpaque(false); }
         @Override protected void paintComponent(Graphics g) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(Color.WHITE);
-            g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 18, 18);
-            g2.setColor(ROW_LINE);
-            g2.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 18, 18);
-            g2.dispose();
+            Graphics2D roundCard = (Graphics2D) g.create();
+            roundCard.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            roundCard.setColor(Color.WHITE);
+            roundCard.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 18, 18);
+            roundCard.setColor(ROW_LINE);
+            roundCard.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 18, 18);
+            roundCard.dispose();
         }
     }
 
