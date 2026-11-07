@@ -1,78 +1,40 @@
 package ui.manager;
 
-import java.awt.*;
-import java.io.*;
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Consumer;
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
+import static ui.manager.ManagerTheme.*;
+
 import data.DbWatcher;
 import data.OrderDAO;
 import data.dbconnect;
-import util.FontLoader;
+import java.awt.*;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
 
-/**
- * Manager window showing the Order History tab.
- * The "Edit Stock Items" tab in the sidebar opens {@link EditStockItems}, which
- * switches between both tabs with a CardLayout.
- */
-public class mainView extends JFrame {
+/** The "Order History" screen (right-hand card of {@code ManagerMain}). */
+public class OrderHistory extends JPanel {
 
-    static final Color MAINWHITE = new Color(246, 246, 246);
-    static final Color MAINORANGE = Color.decode("#EC5E02");
-    static final ImageIcon LOGO = new ImageIcon("public\\assets\\logo\\logo-circle.png");
-    static final Font BOLD = loadFont("Montserrat/static/Montserrat-Bold.ttf");
-    static final Font REGULAR = loadFont("Montserrat/static/Montserrat-Regular.ttf");
     private static final Color ROW_LINE = new Color(232, 232, 232);
     private static final Color TEXT_GRAY = new Color(90, 90, 90);
-
-    static final String TAB_HISTORY = "Order History";
-    static final String TAB_STOCK = "Edit Stock Items";
 
     private static final int ROWS_PER_PAGE = 15;
     private static final int COL_STATUS = 6;   // "Order Status" column (dropdown)
 
-    public mainView() {
-        setTitle("Gudo Restobar Manager");
-        setSize(1340, 1040);
+    /**
+     * The receipt card is drawn on top of the table. Swing normally repaints a single child
+     * without redrawing siblings that overlap it, which let the table paint over the receipt
+     * whenever the mouse moved. Turning "optimized drawing" off makes it redraw them in order.
+     */
+    @Override
+    public boolean isOptimizedDrawingEnabled() { return false; }
+
+    /** Order History panel: heading, the orders table, pagination, delete button and receipt. */
+    public OrderHistory() {
+        JPanel view = this;
         setLayout(null);
-        getContentPane().setBackground(MAINWHITE);
-        setLocationRelativeTo(null);
-        setResizable(false);
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
-
-        // Clicking "Edit Stock Items" opens the card-layout window on that tab.
-        JPanel sidebarPanel = sideBar(TAB_HISTORY, tab -> {
-            if (TAB_STOCK.equals(tab)) {
-                EditStockItems view = new EditStockItems();
-                view.showTab(TAB_STOCK);
-                view.setLocationRelativeTo(this);
-                view.setVisible(true);
-                dispose();
-            }
-        });
-        sidebarPanel.setBounds(0, 0, 332, 1040);
-
-        JPanel viewRecordsPanel = viewRecords();
-        viewRecordsPanel.setBounds(331, 0, 1008, 1040);
-
-        add(sidebarPanel);
-        add(viewRecordsPanel);
-    }
-
-    /** Order History content: heading, rounded panel containing the table, pagination. */
-    public static JPanel viewRecords() {
-        // The receipt card is drawn on top of the table. Swing normally repaints a single child
-        // without redrawing siblings that overlap it, which let the table paint over the receipt
-        // whenever the mouse moved. Turning "optimized drawing" off makes it redraw them in order.
-        JPanel view = new JPanel() {
-            @Override public boolean isOptimizedDrawingEnabled() { return false; }
-        };
-        view.setLayout(null);
-        view.setBackground(MAINWHITE);
-        view.setOpaque(true);
+        setBackground(MAINWHITE);
+        setOpaque(true);
 
         // Plain container for the table (no outline), as large as the page allows.
         JPanel orderHistory = new JPanel(new BorderLayout());
@@ -279,7 +241,6 @@ public class mainView extends JFrame {
         view.add(orderHistory);
         view.add(label);
         view.add(pagination);
-        return view;
     }
 
     // ------------------------------------------------------------ table style
@@ -591,68 +552,6 @@ public class mainView extends JFrame {
         b.setForeground(selected ? MAINWHITE : MAINORANGE);
         b.addActionListener(e -> action.run());
         return b;
-    }
-
-    public static JPanel sideBar() {
-        return sideBar(TAB_HISTORY, null);
-    }
-
-    /** Sidebar with logo, welcome text and tabs. The active tab is drawn white. */
-    public static JPanel sideBar(String activeTab, Consumer<String> onTabSelected) {
-        JPanel sidebar = new JPanel();
-        sidebar.setLayout(null);
-        sidebar.setBackground(MAINORANGE);
-        sidebar.setSize(332, 1040);
-
-        JLabel label = new JLabel();
-        label.setBounds(61, 25, 209, 219);
-        Image scaledLogo = LOGO.getImage().getScaledInstance(209, 219, Image.SCALE_SMOOTH);
-        label.setIcon(new ImageIcon(scaledLogo));
-
-        JLabel label2 = new JLabel("Welcome, LORD GUDO");
-        label2.setFont(BOLD.deriveFont(24f));
-        label2.setForeground(MAINWHITE);
-        label2.setBounds(17, 262, 298, 31);
-        label2.setVerticalAlignment(SwingConstants.CENTER);
-        label2.setHorizontalAlignment(SwingConstants.CENTER);
-
-        sidebar.add(label);
-        sidebar.add(label2);
-
-        String[] tabs = {TAB_HISTORY, TAB_STOCK};
-        for (int i = 0; i < tabs.length; i++) {
-            JButton tab = tabButton(tabs[i], tabs[i].equals(activeTab));
-            tab.setBounds(0, 404 + i * 62, 332, 62);
-            final String name = tabs[i];
-            tab.addActionListener(e -> {
-                if (onTabSelected != null) onTabSelected.accept(name);
-            });
-            sidebar.add(tab);
-        }
-
-        return sidebar;
-    }
-
-    private static JButton tabButton(String text, boolean active) {
-        JButton b = new JButton(text);
-        b.setFont(BOLD.deriveFont(18f));
-        b.setHorizontalAlignment(SwingConstants.LEFT);
-        b.setBorder(BorderFactory.createEmptyBorder(0, 40, 0, 0));
-        b.setFocusPainted(false);
-        b.setContentAreaFilled(false);
-        b.setOpaque(true);
-        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        b.setBackground(active ? MAINWHITE : MAINORANGE);
-        b.setForeground(active ? MAINORANGE : MAINWHITE);
-        return b;
-    }
-
-    static Font loadFont(String file) {
-        try {
-            return FontLoader.loadFont("public/assets/fonts/" + file);
-        } catch (IOException | FontFormatException e) {
-            throw new IllegalStateException("Could not load font: " + file, e);
-        }
     }
 
     /**
