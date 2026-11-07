@@ -23,10 +23,11 @@ import util.KioskScrollBarUI;
  *
  *   - four KPI cards (total sales, orders, average order value, low-stock items)
  *   - "Business Insights": the 10 business questions on the left; click one and its
- *     SQL query runs, the answer appears on the right together with the SQL used.
+ *     SQL query runs and the answer appears on the right.
  *
- * Every question lists the SQL feature it demonstrates (WHERE, JOIN, GROUP BY, HAVING,
- * subquery, ORDER BY, AVG, ...). Everything refreshes by itself when orders or stock change.
+ * Each Query still records the SQL feature it demonstrates (WHERE, JOIN, GROUP BY, HAVING,
+ * subquery, ORDER BY, AVG, ...) for the project's query table, but the screen doesn't show it.
+ * Everything refreshes by itself when orders or stock change.
  */
 public class SalesSummary extends JPanel {
 
@@ -154,7 +155,6 @@ public class SalesSummary extends JPanel {
     }
 
     // ---- widgets
-    private final JLabel liveBadge = new JLabel();
     private final JLabel kpiSales = new JLabel("-"), kpiOrders = new JLabel("-"),
                          kpiAverage = new JLabel("-"), kpiLow = new JLabel("-");
 
@@ -164,7 +164,6 @@ public class SalesSummary extends JPanel {
     };
     private final JLabel resultTitle = new JLabel();
     private final JLabel status = new JLabel();
-    private final JTextArea sqlText = new JTextArea();
     private final JPanel paramBar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
     private final JLabel paramLabel = new JLabel();
     private final JSpinner numberSpinner = new JSpinner(new SpinnerNumberModel(5, 0, 1000, 1));
@@ -203,7 +202,7 @@ public class SalesSummary extends JPanel {
         add(insights);
 
         questionList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
-        questionList.setFixedCellHeight(68);
+        questionList.setFixedCellHeight(62);
         questionList.setCellRenderer(new QuestionRenderer());
         questionList.setFocusable(false);
         questionList.addListSelectionListener(e -> {
@@ -213,7 +212,7 @@ public class SalesSummary extends JPanel {
             ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         listScroll.setBorder(BorderFactory.createLineBorder(ROW_LINE));
         listScroll.getViewport().setBackground(Color.WHITE);
-        listScroll.setBounds(33, 244, 400, 682);       // 10 rows x 68 + borders
+        listScroll.setBounds(33, 244, 400, 622);       // 10 rows x 62 + borders
         add(listScroll);
 
         // ---- right: the answer
@@ -250,18 +249,6 @@ public class SalesSummary extends JPanel {
         numberSpinner.addChangeListener(e -> runSelected());
         monthBox.addActionListener(e -> runSelected());
 
-        sqlText.setEditable(false);
-        sqlText.setLineWrap(true);
-        sqlText.setWrapStyleWord(true);
-        sqlText.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 11));
-        sqlText.setForeground(TEXT_GRAY);
-        sqlText.setBackground(new Color(238, 238, 238));
-        sqlText.setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
-        JScrollPane sqlScroll = new JScrollPane(sqlText);
-        sqlScroll.setBorder(BorderFactory.createLineBorder(ROW_LINE));
-        sqlScroll.setBounds(451, 330, 524, 120);
-        add(sqlScroll);
-
         JTable resultTable = new JTable(resultModel);
         styleTable(resultTable);
         JScrollPane resultScroll = new JScrollPane(resultTable);
@@ -273,7 +260,7 @@ public class SalesSummary extends JPanel {
         bar.setPreferredSize(new Dimension(26, 0));
         bar.setBorder(BorderFactory.createEmptyBorder(6, 2, 6, 8));
         bar.setBackground(Color.WHITE);
-        resultScroll.setBounds(451, 462, 524, 464);
+        resultScroll.setBounds(451, 330, 524, 536);
         add(resultScroll);
 
         // Real time: refresh the cards and the open answer when orders or stock change.
@@ -396,9 +383,6 @@ public class SalesSummary extends JPanel {
         Query q = QUERIES[row];
         int run = ++runCounter;
 
-        sqlText.setText(displaySql(q));
-        sqlText.setCaretPosition(0);
-
         // read the controls on the Swing thread, query on a background thread
         int number = ((Number) numberSpinner.getValue()).intValue();
         YearMonth month = (YearMonth) monthBox.getSelectedItem();
@@ -458,19 +442,6 @@ public class SalesSummary extends JPanel {
         } else {
             status.setText(result.rows.size() + (result.rows.size() == 1 ? " row" : " rows"));
         }
-    }
-
-    /** The SQL with the "?" replaced by the values currently chosen, for display. */
-    private String displaySql(Query q) {
-        String sql = q.sql;
-        if (q.param == Param.NUMBER) {
-            sql = sql.replaceFirst("\\?", String.valueOf(((Number) numberSpinner.getValue()).intValue()));
-        } else if (q.param == Param.MONTH) {
-            YearMonth ym = (YearMonth) monthBox.getSelectedItem();
-            sql = sql.replaceFirst("\\?", String.valueOf(ym.getYear()))
-                     .replaceFirst("\\?", String.valueOf(ym.getMonthValue()));
-        }
-        return sql;
     }
 
     // ------------------------------------------------------------------ helpers
@@ -584,9 +555,8 @@ public class SalesSummary extends JPanel {
             numberHolder.setOpaque(false);
             numberHolder.add(number);
 
-            JLabel text = new JLabel("<html><body style='width:290px'><b>" + q.question
-                + "</b><br><span style='color:#EC5E02;font-size:10px'>" + q.feature + "</span></body></html>");
-            text.setFont(REGULAR.deriveFont(12.5f));
+            JLabel text = new JLabel("<html><body style='width:290px'><b>" + q.question + "</b></body></html>");
+            text.setFont(REGULAR.deriveFont(13f));
 
             row.add(numberHolder, BorderLayout.WEST);
             row.add(text, BorderLayout.CENTER);
