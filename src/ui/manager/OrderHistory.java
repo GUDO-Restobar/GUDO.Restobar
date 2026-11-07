@@ -7,10 +7,10 @@ import data.OrderDAO;
 import data.dbconnect;
 import java.awt.*;
 import java.sql.*;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.List;
 import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.table.*;
 
 /** The "Order History" screen (right-hand card of {@code ManagerMain}). */
 public class OrderHistory extends JPanel {

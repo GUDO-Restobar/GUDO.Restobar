@@ -32,7 +32,6 @@ public class ManagerMain extends JFrame {
         setResizable(false);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
 
-        // right side: one card per tab (to add a tab: add a panel class here + a name in the sidebar)
         content.add(new OrderHistory(), TAB_HISTORY);
         content.add(new EditStockItems(), TAB_STOCK);
         content.add(new SalesSummary(), TAB_SALES);
@@ -87,15 +86,15 @@ public class ManagerMain extends JFrame {
     }
 
     private static JButton tabButton(String text) {
-        JButton b = new JButton(text);
-        b.setFont(BOLD.deriveFont(18f));
-        b.setHorizontalAlignment(SwingConstants.LEFT);
-        b.setBorder(BorderFactory.createEmptyBorder(0, 40, 0, 0));
-        b.setFocusPainted(false);
-        b.setContentAreaFilled(false);
-        b.setOpaque(true);
-        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        return b;
+        JButton button = new JButton(text);
+        button.setFont(BOLD.deriveFont(18f));
+        button.setHorizontalAlignment(SwingConstants.LEFT);
+        button.setBorder(BorderFactory.createEmptyBorder(0, 40, 0, 0));
+        button.setFocusPainted(false);
+        button.setContentAreaFilled(false);
+        button.setOpaque(true);
+        button.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        return button;
     }
 
     public static void main(String[] args) {

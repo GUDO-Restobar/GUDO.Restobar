@@ -5,18 +5,14 @@ import static ui.manager.ManagerTheme.*;
 import java.awt.*;
 import data.DbWatcher;
 import data.dbconnect;
-import util.KioskScrollBarUI;
 import java.sql.*;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.List;
 import javax.swing.*;
 
 /** The "Edit Stock Items" screen (right-hand card of {@code ManagerMain}). */
 public class EditStockItems extends JPanel {
 
-    // Same scroll bar images the kiosk MenuPage uses.
-    private static final String THUMB = "public/assets/scrollbar/scroll-thumb.png";
-    private static final String TRACK = "public/assets/scrollbar/scroll-track.png";
     private static final String IMG = "public/assets/menu/";
 
     private final List<StockItem> stockItems = new ArrayList<>();
@@ -192,13 +188,7 @@ public class EditStockItems extends JPanel {
         scroll.getViewport().setBackground(MAINWHITE);
         scroll.setBorder(null);                       // like MenuPage; the margin is on the panel instead
         panel.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
-        // Scroll bar set up exactly like the kiosk MenuPage.
-        JScrollBar bar = scroll.getVerticalScrollBar();
-        bar.setUnitIncrement(24);
-        bar.setUI(new KioskScrollBarUI(THUMB, TRACK));
-        bar.setPreferredSize(new Dimension(26, 0));
-        bar.setBorder(BorderFactory.createEmptyBorder(6, 2, 6, 8));
-        bar.setBackground(MAINWHITE);
+        styleScrollBar(scroll, MAINWHITE);            // shared kiosk-style scroll bar (ManagerTheme)
         panel.add(scroll, BorderLayout.CENTER);
         view.add(panel);
 

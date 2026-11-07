@@ -7,16 +7,12 @@ import data.dbconnect;
 import java.awt.*;
 import java.math.BigDecimal;
 import java.sql.*;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.YearMonth;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.List;
 import javax.swing.*;
-import javax.swing.table.DefaultTableCellRenderer;
-import javax.swing.table.DefaultTableModel;
-import util.KioskScrollBarUI;
+import javax.swing.table.*;
 
 /**
  * "Sales Summary" screen, laid out like a small dashboard:
@@ -33,10 +29,8 @@ public class SalesSummary extends JPanel {
 
     private static final Color ROW_LINE = new Color(232, 232, 232);
     private static final Color TEXT_GRAY = new Color(110, 110, 110);
-    private static final Color GREEN = new Color(79, 138, 60);
+    private static final Color GREEN = new Color(46, 125, 50);
     private static final Color RED = new Color(198, 40, 40);
-    private static final String THUMB = "public/assets/scrollbar/scroll-thumb.png";
-    private static final String TRACK = "public/assets/scrollbar/scroll-track.png";
 
     /** Stock below this number counts as "low" in the KPI card. */
     private static final int REORDER_LEVEL = 5;
@@ -50,8 +44,7 @@ public class SalesSummary extends JPanel {
         final String paramLabel;
         final int paramDefault, paramMin, paramMax;
 
-        Query(String question, String sql,
-              Param param, String paramLabel, int paramDefault, int paramMin, int paramMax) {
+        Query(String question, String sql, Param param, String paramLabel, int paramDefault, int paramMin, int paramMax) {
             this.question = question;
             this.sql = sql;
             this.param = param;
@@ -253,12 +246,7 @@ public class SalesSummary extends JPanel {
         JScrollPane resultScroll = new JScrollPane(resultTable);
         resultScroll.getViewport().setBackground(Color.WHITE);
         resultScroll.setBorder(BorderFactory.createLineBorder(ROW_LINE));
-        JScrollBar bar = resultScroll.getVerticalScrollBar();
-        bar.setUnitIncrement(24);
-        bar.setUI(new KioskScrollBarUI(THUMB, TRACK));
-        bar.setPreferredSize(new Dimension(26, 0));
-        bar.setBorder(BorderFactory.createEmptyBorder(6, 2, 6, 8));
-        bar.setBackground(Color.WHITE);
+        styleScrollBar(resultScroll, Color.WHITE);    // shared kiosk-style scroll bar (ManagerTheme)
         resultScroll.setBounds(451, 330, 524, 536);
         add(resultScroll);
 
@@ -292,21 +280,21 @@ public class SalesSummary extends JPanel {
         card.setLayout(null);
         card.setBounds(x, 104, 222, 92);
 
-        JLabel titleKPI = new JLabel(title);
-        titleKPI.setFont(REGULAR.deriveFont(12f));
-        titleKPI.setForeground(TEXT_GRAY);
-        titleKPI.setBounds(18, 10, 190, 16);
+        JLabel t = new JLabel(title);
+        t.setFont(REGULAR.deriveFont(12f));
+        t.setForeground(TEXT_GRAY);
+        t.setBounds(18, 10, 190, 16);
         value.setFont(BOLD.deriveFont(26f));
         value.setForeground(valueColor);
         value.setBounds(18, 28, 190, 36);
-        JLabel captionKPI = new JLabel(caption);
-        captionKPI.setFont(REGULAR.deriveFont(11f));
-        captionKPI.setForeground(TEXT_GRAY);
-        captionKPI.setBounds(18, 66, 190, 16);
+        JLabel c = new JLabel(caption);
+        c.setFont(REGULAR.deriveFont(11f));
+        c.setForeground(TEXT_GRAY);
+        c.setBounds(18, 66, 190, 16);
 
-        card.add(titleKPI);
+        card.add(t);
         card.add(value);
-        card.add(captionKPI);
+        card.add(c);
         add(card);
     }
 
@@ -407,17 +395,17 @@ public class SalesSummary extends JPanel {
     private static Result runQuery(Query query, int number, YearMonth month) throws SQLException {
         Result result = new Result();
         try (Connection conn = dbconnect.getConnection();
-             PreparedStatement ps = conn.prepareStatement(query.sql)) {
+             PreparedStatement preppedStmt = conn.prepareStatement(query.sql)) {
             if (query.param == Param.NUMBER) {
-                ps.setInt(1, number);
+                preppedStmt.setInt(1, number);
             } else if (query.param == Param.MONTH) {
-                ps.setInt(1, month.getYear());
-                ps.setInt(2, month.getMonthValue());
+                preppedStmt.setInt(1, month.getYear());
+                preppedStmt.setInt(2, month.getMonthValue());
             }
-            try (ResultSet resultSet = ps.executeQuery()) {
-                ResultSetMetaData md = resultSet.getMetaData();
-                int num = md.getColumnCount();
-                for (int i = 1; i <= num; i++) result.columns.add(md.getColumnLabel(i));
+            try (ResultSet resultSet = preppedStmt.executeQuery()) {
+                ResultSetMetaData rsMetaData = resultSet.getMetaData();
+                int num = rsMetaData.getColumnCount();
+                for (int i = 1; i <= num; i++) result.columns.add(rsMetaData.getColumnLabel(i));
                 while (resultSet.next()) {
                     Object[] row = new Object[num];
                     for (int i = 1; i <= num; i++) {
@@ -433,11 +421,11 @@ public class SalesSummary extends JPanel {
         return result;
     }
 
-    private void show(Result result, Query query) {
+    private void show(Result result, Query q) {
         resultModel.setDataVector(result.rows.toArray(new Object[0][]), result.columns.toArray());
         status.setForeground(TEXT_GRAY);
         if (result.rows.isEmpty()) {
-            status.setText("No rows match" + (query.param == Param.NONE ? "." : " – try changing the value above."));
+            status.setText("No rows match" + (q.param == Param.NONE ? "." : " – try changing the value above."));
         } else {
             status.setText(result.rows.size() + (result.rows.size() == 1 ? " row" : " rows"));
         }
@@ -453,13 +441,13 @@ public class SalesSummary extends JPanel {
         return "₱" + String.format("%,.2f", amount);
     }
 
-    private static String formatMonth(YearMonth yearMon) {
-        return yearMon == null ? "" : yearMon.format(DateTimeFormatter.ofPattern("MMMM yyyy"));
+    private static String formatMonth(YearMonth yrMon) {
+        return yrMon == null ? "" : yrMon.format(DateTimeFormatter.ofPattern("MMMM yyyy"));
     }
 
-    private static String rootMessage(Throwable rootMssg) {
-        while (rootMssg.getCause() != null) rootMssg = rootMssg.getCause();
-        return rootMssg.getMessage();
+    private static String rootMessage(Throwable t) {
+        while (t.getCause() != null) t = t.getCause();
+        return t.getMessage();
     }
 
     /** Orange header, white rows with thin dividers - same look as the Order History table. */
@@ -516,13 +504,13 @@ public class SalesSummary extends JPanel {
     private static class Card extends JPanel {
         Card() { setOpaque(false); }
         @Override protected void paintComponent(Graphics g) {
-            Graphics2D roundCard = (Graphics2D) g.create();
-            roundCard.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            roundCard.setColor(Color.WHITE);
-            roundCard.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 18, 18);
-            roundCard.setColor(ROW_LINE);
-            roundCard.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 18, 18);
-            roundCard.dispose();
+            Graphics2D graphics = (Graphics2D) g.create();
+            graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            graphics.setColor(Color.WHITE);
+            graphics.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 18, 18);
+            graphics.setColor(ROW_LINE);
+            graphics.drawRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 18, 18);
+            graphics.dispose();
         }
     }
 
@@ -539,11 +527,11 @@ public class SalesSummary extends JPanel {
 
             JLabel number = new JLabel(String.valueOf(index + 1), SwingConstants.CENTER) {
                 @Override protected void paintComponent(Graphics g) {
-                    Graphics2D g2 = (Graphics2D) g.create();
-                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    g2.setColor(MAINORANGE);
-                    g2.fillOval(0, 0, getWidth() - 1, getHeight() - 1);
-                    g2.dispose();
+                    Graphics2D graphics = (Graphics2D) g.create();
+                    graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                    graphics.setColor(MAINORANGE);
+                    graphics.fillOval(0, 0, getWidth() - 1, getHeight() - 1);
+                    graphics.dispose();
                     super.paintComponent(g);
                 }
             };
