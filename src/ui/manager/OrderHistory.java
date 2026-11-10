@@ -1,76 +1,41 @@
 package ui.manager;
 
-import java.awt.*;
-import java.sql.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Consumer;
-import javax.swing.*;
-import javax.swing.table.DefaultTableModel;
+import static ui.manager.ManagerTheme.*;
+
 import data.DbWatcher;
 import data.OrderDAO;
 import data.dbconnect;
+import java.awt.*;
+import java.sql.*;
+import java.util.*;
+import java.util.List;
+import javax.swing.*;
+import javax.swing.table.*;
 import util.UiColors;
-import util.UiKit;
 
-/**
- * Manager window showing the Order History tab.
- * The "Edit Stock Items" tab in the sidebar opens {@link EditStockItems}, which
- * switches between both tabs with a CardLayout.
- */
-public class MainView extends JFrame {
+/** The "Order History" screen (right-hand card of {@code ManagerMain}). */
+public class OrderHistory extends JPanel {
 
-    static final Font BOLD = UiKit.font("Montserrat/static/Montserrat-Bold.ttf");
-    static final Font REGULAR = UiKit.font("Montserrat/static/Montserrat-Regular.ttf");
-
-    /** The round logo picture every screen shares (cached by UiKit). */
-    static final String LOGO = "public\\assets\\logo\\logo-circle.png";
-
-    static final String TAB_HISTORY = "Order History";
-    static final String TAB_STOCK = "Edit Stock Items";
+    private static final Color ROW_LINE = new Color(232, 232, 232);
+    private static final Color TEXT_GRAY = new Color(90, 90, 90);
 
     private static final int ROWS_PER_PAGE = 15;
     private static final int COL_STATUS = 6;   // "Order Status" column (dropdown)
 
-    public MainView() {
-        setTitle("Gudo Restobar Manager");
-        setSize(1340, 1040);
+    /**
+     * The receipt card is drawn on top of the table. Swing normally repaints a single child
+     * without redrawing siblings that overlap it, which let the table paint over the receipt
+     * whenever the mouse moved. Turning "optimized drawing" off makes it redraw them in order.
+     */
+    @Override
+    public boolean isOptimizedDrawingEnabled() { return false; }
+
+    /** Order History panel: heading, the orders table, pagination, delete button and receipt. */
+    public OrderHistory() {
+        JPanel view = this;
         setLayout(null);
-        getContentPane().setBackground(UiColors.BACKGROUND);
-        setLocationRelativeTo(null);
-        setResizable(false);
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
-
-        // Clicking "Edit Stock Items" opens the card-layout window on that tab.
-        JPanel sidebarPanel = sideBar(TAB_HISTORY, tab -> {
-            if (TAB_STOCK.equals(tab)) {
-                EditStockItems view = new EditStockItems();
-                view.showTab(TAB_STOCK);
-                view.setLocationRelativeTo(this);
-                view.setVisible(true);
-                dispose();
-            }
-        });
-        sidebarPanel.setBounds(0, 0, 332, 1040);
-
-        JPanel viewRecordsPanel = viewRecords();
-        viewRecordsPanel.setBounds(331, 0, 1008, 1040);
-
-        add(sidebarPanel);
-        add(viewRecordsPanel);
-    }
-
-    /** Order History content: heading, rounded panel containing the table, pagination. */
-    public static JPanel viewRecords() {
-        // The receipt card is drawn on top of the table. Swing normally repaints a single child
-        // without redrawing siblings that overlap it, which let the table paint over the receipt
-        // whenever the mouse moved. Turning "optimized drawing" off makes it redraw them in order.
-        JPanel view = new JPanel() {
-            @Override public boolean isOptimizedDrawingEnabled() { return false; }
-        };
-        view.setLayout(null);
-        view.setBackground(UiColors.BACKGROUND);
-        view.setOpaque(true);
+        setBackground(UiColors.BACKGROUND);
+        setOpaque(true);
 
         // Plain container for the table (no outline), as large as the page allows.
         JPanel orderHistory = new JPanel(new BorderLayout());
@@ -277,7 +242,6 @@ public class MainView extends JFrame {
         view.add(orderHistory);
         view.add(label);
         view.add(pagination);
-        return view;
     }
 
     // ------------------------------------------------------------ table style
@@ -451,7 +415,7 @@ public class MainView extends JFrame {
         card.setBorder(BorderFactory.createEmptyBorder(14, 22, 20, 22));
 
         // top: arrow (left) + centered logo
-        JLabel logo = new JLabel(UiKit.icon(LOGO, 88, 88));
+        JLabel logo = new JLabel(new ImageIcon(LOGO.getImage().getScaledInstance(88, 88, Image.SCALE_SMOOTH)));
         JPanel top = new JPanel(null) {
             @Override public void doLayout() {
                 logo.setBounds((getWidth() - 88) / 2, 4, 88, 88);   // centered on the card
@@ -588,55 +552,6 @@ public class MainView extends JFrame {
         b.setBackground(selected ? UiColors.ORANGE : UiColors.BACKGROUND);
         b.setForeground(selected ? UiColors.BACKGROUND : UiColors.ORANGE);
         b.addActionListener(e -> action.run());
-        return b;
-    }
-
-    /** Sidebar with logo, welcome text and tabs. The active tab is drawn white. */
-    public static JPanel sideBar(String activeTab, Consumer<String> onTabSelected) {
-        JPanel sidebar = new JPanel();
-        sidebar.setLayout(null);
-        sidebar.setBackground(UiColors.ORANGE);
-        sidebar.setSize(332, 1040);
-
-        JLabel logo = new JLabel();
-        logo.setBounds(61, 25, 209, 219);
-        logo.setIcon(UiKit.icon(LOGO, 209, 219));
-
-        JLabel welcome = new JLabel("Welcome, LORD GUDO");
-        welcome.setFont(BOLD.deriveFont(24f));
-        welcome.setForeground(UiColors.BACKGROUND);
-        welcome.setBounds(17, 262, 298, 31);
-        welcome.setVerticalAlignment(SwingConstants.CENTER);
-        welcome.setHorizontalAlignment(SwingConstants.CENTER);
-
-        sidebar.add(logo);
-        sidebar.add(welcome);
-
-        String[] tabs = {TAB_HISTORY, TAB_STOCK};
-        for (int i = 0; i < tabs.length; i++) {
-            JButton tab = tabButton(tabs[i], tabs[i].equals(activeTab));
-            tab.setBounds(0, 404 + i * 62, 332, 62);
-            final String name = tabs[i];
-            tab.addActionListener(e -> {
-                if (onTabSelected != null) onTabSelected.accept(name);
-            });
-            sidebar.add(tab);
-        }
-
-        return sidebar;
-    }
-
-    private static JButton tabButton(String text, boolean active) {
-        JButton b = new JButton(text);
-        b.setFont(BOLD.deriveFont(18f));
-        b.setHorizontalAlignment(SwingConstants.LEFT);
-        b.setBorder(BorderFactory.createEmptyBorder(0, 40, 0, 0));
-        b.setFocusPainted(false);
-        b.setContentAreaFilled(false);
-        b.setOpaque(true);
-        b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        b.setBackground(active ? UiColors.BACKGROUND : UiColors.ORANGE);
-        b.setForeground(active ? UiColors.ORANGE : UiColors.BACKGROUND);
         return b;
     }
 

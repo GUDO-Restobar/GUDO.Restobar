@@ -1,65 +1,40 @@
 package ui.manager;
 
-import java.awt.*;
+import static ui.manager.ManagerTheme.*;
+
 import data.DbWatcher;
 import data.dbconnect;
-import util.KioskScrollBarUI;
-import util.UiColors;
-import util.UiKit;
+import java.awt.*;
 import java.sql.*;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.List;
 import javax.swing.*;
+import util.UiColors;
+import util.UiKit;
 
-/**
- * Same window as {@link MainView}, but the content area is a CardLayout that
- * switches between the "Order History" and "Edit Stock Items" tabs.
- */
-public class EditStockItems extends JFrame {
+/** The "Edit Stock Items" screen (right-hand card of {@code ManagerMain}). */
+public class EditStockItems extends JPanel {
 
-    private static final Font BOLD = MainView.BOLD;
-    // Same scroll bar images the kiosk MenuPage uses .
-    private static final String THUMB = "public/assets/scrollbar/scroll-thumb.png";
-    private static final String TRACK = "public/assets/scrollbar/scroll-track.png";
     private static final String IMG = "public/assets/menu/";
-
-    private final CardLayout cardLayout = new CardLayout();
-    private final JPanel contentPanel = new JPanel(cardLayout);
-    private final JPanel sidebarHolder = new JPanel(new BorderLayout());
 
     private final List<StockItem> stockItems = new ArrayList<>();
     private final List<StockCard> stockCards = new ArrayList<>();
     private DbWatcher.Subscription stockWatch;
 
     public EditStockItems() {
-        setTitle("Gudo Restobar Manager");
-        setSize(1340, 1040);
-        setLayout(null);
-        getContentPane().setBackground(UiColors.BACKGROUND);
-        setLocationRelativeTo(null);
-        setResizable(false);
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+        setBackground(UiColors.BACKGROUND);
 
         loadStockItems();
-
-        contentPanel.add(MainView.viewRecords(), MainView.TAB_HISTORY);
-        contentPanel.add(editStockItems(), MainView.TAB_STOCK);
-        contentPanel.setBounds(331, 0, 1008, 1040);
-
-        sidebarHolder.setBounds(0, 0, 332, 1040);
-
-        add(sidebarHolder);
-        add(contentPanel);
-
-        showTab(MainView.TAB_HISTORY);
+        add(editStockItems(), BorderLayout.CENTER);
 
         // Real time: the kiosk reduces the stock whenever an order is paid, so keep the
-        // counts on screen in step with the database for as long as this window is open.
-        contentPanel.addHierarchyListener(e -> {
+        // counts on screen in step with the database for as long as this screen is open.
+        addHierarchyListener(e -> {
             if ((e.getChangeFlags() & java.awt.event.HierarchyEvent.DISPLAYABILITY_CHANGED) == 0) return;
-            if (contentPanel.isDisplayable() && stockWatch == null) {
+            if (isDisplayable() && stockWatch == null) {
                 stockWatch = DbWatcher.onStockChanged(this::syncStockFromDatabase);
-            } else if (!contentPanel.isDisplayable() && stockWatch != null) {
+            } else if (!isDisplayable() && stockWatch != null) {
                 stockWatch.cancel();
                 stockWatch = null;
             }
@@ -88,15 +63,6 @@ public class EditStockItems extends JFrame {
             if (!hasPendingEdit) item.stock = db;
         }
         for (StockCard card : stockCards) card.refresh();
-    }
-
-    /** Switches the card and redraws the sidebar so the matching tab is highlighted. */
-    public void showTab(String tab) {
-        sidebarHolder.removeAll();
-        sidebarHolder.add(MainView.sideBar(tab, this::showTab), BorderLayout.CENTER);
-        sidebarHolder.revalidate();
-        sidebarHolder.repaint();
-        cardLayout.show(contentPanel, tab);
     }
 
     // ---------------------------------------------------------------- stock
@@ -224,13 +190,7 @@ public class EditStockItems extends JFrame {
         scroll.getViewport().setBackground(UiColors.BACKGROUND);
         scroll.setBorder(null);                       // like MenuPage; the margin is on the panel instead
         panel.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
-        // Scroll bar set up exactly like the kiosk MenuPage.
-        JScrollBar bar = scroll.getVerticalScrollBar();
-        bar.setUnitIncrement(24);
-        bar.setUI(new KioskScrollBarUI(THUMB, TRACK));
-        bar.setPreferredSize(new Dimension(26, 0));
-        bar.setBorder(BorderFactory.createEmptyBorder(6, 2, 6, 8));
-        bar.setBackground(UiColors.BACKGROUND);
+        styleScrollBar(scroll, UiColors.BACKGROUND);   // shared kiosk-style scroll bar (ManagerTheme)
         panel.add(scroll, BorderLayout.CENTER);
         view.add(panel);
 
