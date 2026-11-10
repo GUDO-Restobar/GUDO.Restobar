@@ -27,6 +27,7 @@ public class KioskMain extends JFrame {
     private static final int RECEIPT_MILLIS = 10000;
 
     /** Keys used to find each page inside the CardLayout stack. */
+    private static final String INTRO_SCREEN = "intro";
     private static final String LANDING_SCREEN = "landing";
     private static final String ORDER_OPTION_SCREEN = "order-option";
     private static final String MENU_SCREEN = "menu_page";
@@ -41,6 +42,7 @@ public class KioskMain extends JFrame {
 
     private final CardLayout cardLayout = new CardLayout();
     private final JPanel screenPanel = new JPanel(cardLayout);
+    private final IntroVideoPanel introPanel = new IntroVideoPanel();
     private final Cart cart = new Cart();
 
     /** The page on screen right now, and the one that was shown before it. */
@@ -58,7 +60,7 @@ public class KioskMain extends JFrame {
         setupWindow();
         buildScreens();
         setContentPane(screenPanel);
-        showScreen(LANDING_SCREEN);
+        showIntro();
     }
 
     /** Title, size, position and close behaviour of the kiosk window. */
@@ -77,6 +79,9 @@ public class KioskMain extends JFrame {
 
     /** Creates every page once and drops it into the CardLayout stack. */
     private void buildScreens() {
+
+        // --- Intro video: plays first and on every loop back to the start ---
+        screenPanel.add(introPanel, INTRO_SCREEN);
 
         // --- Entry point: the landing banner ---
         screenPanel.add(new LandingPage(() -> showScreen(ORDER_OPTION_SCREEN)), LANDING_SCREEN);
@@ -131,7 +136,7 @@ public class KioskMain extends JFrame {
             () -> {                               // Yes: throw the order away
                 cart.clear();
                 menuPage.setTotal(cart.getTotal());
-                showScreen(LANDING_SCREEN);
+                showIntro();
             },
             () -> showScreen(previousScreen)      // No: back to the previous page
         ), START_OVER_SCREEN);
@@ -149,7 +154,7 @@ public class KioskMain extends JFrame {
         Timer receiptTimer = new Timer(RECEIPT_MILLIS, e -> {
             cart.clear();
             menuPage.setTotal(cart.getTotal());
-            showScreen(LANDING_SCREEN);
+            showIntro();
         });
         receiptTimer.setRepeats(false);
 
@@ -164,6 +169,43 @@ public class KioskMain extends JFrame {
                 receiptTimer.stop();
             }
         });
+    }
+
+    /**
+     * Plays the intro video inside the kiosk window, then lands on the start
+     * page. Every loop back to the beginning (receipt reset, Start Over)
+     * goes through here.
+     */
+    private void showIntro() {
+        currentScreen = INTRO_SCREEN;
+        previousScreen = LANDING_SCREEN;
+        cardLayout.show(screenPanel, INTRO_SCREEN);
+        introPanel.play(this::showLanding);
+    }
+
+    /** The landing page's entrance: show it, then fade the window in smoothly. */
+    private void showLanding() {
+        showScreen(LANDING_SCREEN);
+        fadeIn();
+    }
+
+    /** Fades the window in from invisible to fully visible over ~600 ms. */
+    private void fadeIn() {
+        try {
+            setOpacity(0f);
+            Timer fadeTimer = new Timer(15, null);          // 40 steps x 15 ms
+            final int[] step = {0};
+            fadeTimer.addActionListener(e -> {
+                step[0]++;
+                setOpacity(Math.min(1f, step[0] / 40f));
+                if (step[0] >= 40) {
+                    fadeTimer.stop();
+                }
+            });
+            fadeTimer.start();
+        } catch (RuntimeException unsupported) {
+            // This platform can't fade windows: the page is already visible.
+        }
     }
 
     /**
