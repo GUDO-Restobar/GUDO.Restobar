@@ -1,7 +1,5 @@
 *.class
 *.jar
-*.log
-/bin/
 /out/
 /build/
 /target/
