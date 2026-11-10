@@ -1,14 +1,22 @@
 package util;
- 
+
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import javax.swing.*;
 
-public class CategoryTab extends JPanel{
+/**
+ * One category button in the menu's orange sidebar (Meals, Snacks, Drinks).
+ *
+ * Main purpose: reusable UI component - a white rounded card with a picture
+ * and a caption that runs the given action when it is clicked. Used by
+ * MenuPage to scroll the product list to a section.
+ */
+public class CategoryTab extends JPanel {
     private static final int WIDTH = 104;
     private static final int HEIGHT = 142;
 
+    /** @param onClick runs when the customer taps the tab */
     public CategoryTab(String label, String imagePath, Font font, Runnable onClick) {
         setLayout(new BorderLayout());
         setOpaque(false);
@@ -39,7 +47,7 @@ public class CategoryTab extends JPanel{
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        g2.setColor(Color.WHITE);
+        g2.setColor(UiColors.SURFACE);
         g2.fillRoundRect(0, 0, getWidth(), getHeight(), 12, 12);
 
         g2.dispose();

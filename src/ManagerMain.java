@@ -1,12 +1,10 @@
-import ui.manager.mainView;
 import javax.swing.*;
 
+import ui.manager.MainView;
+
+/** Boots the manager window. */
 public class ManagerMain {
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            mainView manager = new mainView();
-            manager.setVisible(true);
-        });
+        SwingUtilities.invokeLater(() -> new MainView().setVisible(true));
     }
-
 }

@@ -1,31 +1,59 @@
 package util;
 
+/**
+ * The one kiosk session (Singleton pattern).
+ *
+ * Main purpose: remembers the choices made on the way through the kiosk - the
+ * order type (Dine-in / Takeout), the payment method (Cash / Cashless) and
+ * the id of the order that was last saved - so the screens and KioskMain can
+ * read them without passing them around.
+ *
+ * The private constructor plus the single INSTANCE guarantee that there is
+ * always exactly one session, no matter which screen asks for it. Screens
+ * reach it through {@link #getInstance()}.
+ */
 public class OrderSession {
-    private static String orderType = "Dine-in";
-    private static String paymentMethod = "Cash";
-    private static int orderID = -1;
 
-    public static void setOrderType(String type) {
-        orderType = type;
+    /** The one and only session. */
+    private static final OrderSession INSTANCE = new OrderSession();
+
+    /** What the customer is ordering: "Dine-in" or "Takeout". */
+    private String orderType = "Dine-in";
+    /** How the customer chose to pay: "Cash" or "Cashless". */
+    private String paymentMethod = "Cash";
+    /** The id of the order that was saved last, or -1 if none was. */
+    private int orderID = -1;
+
+    /** Singleton: nobody outside this class can create a second session. */
+    private OrderSession() {
     }
 
-    public static String getOrderType() {
+    /** The shared session instance. */
+    public static OrderSession getInstance() {
+        return INSTANCE;
+    }
+
+    public void setOrderType(String type) {
+        this.orderType = type;
+    }
+
+    public String getOrderType() {
         return orderType;
     }
 
-    public static void setPaymentMethod(String method) {
-        paymentMethod = method;
+    public void setPaymentMethod(String method) {
+        this.paymentMethod = method;
     }
 
-    public static String getPaymentMethod() {
+    public String getPaymentMethod() {
         return paymentMethod;
     }
 
-    public static void setOrderID(int id) {
-        orderID = id;
+    public void setOrderID(int id) {
+        this.orderID = id;
     }
 
-    public static int getOrderID() {
+    public int getOrderID() {
         return orderID;
     }
 }

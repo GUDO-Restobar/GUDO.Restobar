@@ -1,6 +1,12 @@
 package util;
 
-
+/**
+ * One item on the menu, as shown on the menu grid and in the order.
+ *
+ * Main purpose: an immutable value object (id, name, price, picture) that
+ * every screen shares. Equality is by itemID only, so the same meal from
+ * different screens is always the same key inside a {@link Cart}.
+ */
 public class Product {
     private final int itemID;
     private final String name;

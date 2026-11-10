@@ -8,6 +8,14 @@ import javax.imageio.ImageIO;
 import javax.swing.JLabel;
 import javax.swing.Timer;
 
+/**
+ * A {@link JLabel} that slowly cross-fades between a list of pictures.
+ *
+ * Main purpose: the animated banner on the landing page. Each image is shown
+ * for {@link #DISPLAY_MS} milliseconds, then faded into the next one over
+ * {@link #FADE_MS} milliseconds. The animation starts when the label is put
+ * on screen and stops when it is taken off again.
+ */
 public class FadingBanner extends JLabel {
     private static final int DISPLAY_MS = 6000;
     private static final int FADE_MS = 800;

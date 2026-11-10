@@ -2,10 +2,20 @@ package util;
 
 import java.util.*;
 
+/**
+ * The customer's order: a list of products with their quantities.
+ *
+ * Main purpose: the single source of truth for what is being bought. Every
+ * screen reads the total from here and every screen mutates it through these
+ * methods, so the menu, the cart and the checkout page always agree.
+ *
+ * Listeners fire on every change so the screens can redraw themselves.
+ */
 public class Cart implements Prototype<Cart> {
     private final Map<Product, Integer> items = new LinkedHashMap<>();
     private final List<Runnable> listeners = new ArrayList<>();
 
+    /** Adds one more of this product, but never more than what is in stock. */
     public void add(Product product) {
         int current = items.getOrDefault(product, 0);
         if (current >= Inventory.getStock(product)) {
@@ -15,21 +25,7 @@ public class Cart implements Prototype<Cart> {
         fireChanged();
     }
 
-    public void remove(Product product) {
-        Integer quantity = items.get(product);
-
-        if (quantity == null) {
-            return;
-        }
-
-        if (quantity > 1) {
-            items.put(product, quantity - 1);
-        } else {
-            items.remove(product);
-        }
-        fireChanged();
-    }
-
+    /** Sets the exact quantity; 0 (or a negative number) removes the product. */
     public void setQuantity(Product product, int quantity) {
         if (quantity <= 0) {
             items.remove(product);
@@ -45,10 +41,12 @@ public class Cart implements Prototype<Cart> {
         fireChanged();
     }
 
+    /** An unmodifiable view of the cart - use setQuantity() to change it. */
     public Map<Product, Integer> getItems() {
         return Collections.unmodifiableMap(items);
     }
 
+    /** The running total: every price multiplied by its quantity, added up. */
     public double getTotal(){
         double total = 0.0;
 
@@ -61,6 +59,7 @@ public class Cart implements Prototype<Cart> {
         return total;
     }
 
+    /** Throws the whole order away (used by Start Over). */
     public void clear() {
         items.clear();
         fireChanged();

@@ -1,5 +1,8 @@
 package ui.kiosk;
 
+// ============================================================
+// IMPORTS
+// ============================================================
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -10,164 +13,81 @@ import java.util.function.Consumer;
 import javax.swing.*;
 import util.*;
 
+/**
+ * The "Your Order" screen: every line of the cart, the running total and the
+ * buttons that drive the rest of the flow - Order More, Start Over and
+ * Complete Order (which goes to payment).
+ *
+ * Each line can be edited through its "Edit Meal" button; KioskMain decides
+ * where that leads.
+ */
 public class CheckoutPage extends JPanel {
 
-    private static final Color ORANGE = new Color(236, 94, 2);
-    private static final Color HOVER = new Color(255, 120, 35);
-    private static final Color DARK_ORANGE = new Color(204, 80, 0);
-    private static final Color BROWN = new Color(74, 45, 35);
-    private static final Color OFF_WHITE = new Color(246, 246, 246);
-    private static final Color LINE = new Color(200, 200, 200);
-
-    private final Cart cart;
-    private final Consumer<Product> onEditItem;
-    private final Font bold = loadFont("Montserrat-Bold.ttf");
-    private final Font regular = loadFont("Montserrat-Regular.ttf");
+    // ============================================================
+    // FRONTEND - header, item list, empty state and the footer buttons
+    // ============================================================
 
     private static final String SCROLL_THUMB = "public/assets/scrollbar/scroll-thumb.png";
     private static final String SCROLL_TRACK = "public/assets/scrollbar/scroll-track.png";
 
+    /** The two states the middle of the page can be in. */
     private static final String EMPTY_CARD = "empty";
     private static final String LIST_CARD = "list";
+
+    private final Cart cart;
+    /** Called with the product whose "Edit Meal" button was pressed. */
+    private final Consumer<Product> onEditItem;
+    /** Called when the customer wants to go back to the menu. */
+    private final Runnable onOrderMore;
+    /** Called when the customer wants to throw the order away. */
+    private final Runnable onStartOver;
+    /** Called when the customer is ready to pay. */
+    private final Runnable onComplete;
+
+    private final Font bold = UiKit.font("Montserrat/static/Montserrat-Bold.ttf");
+    private final Font regular = UiKit.font("Montserrat/static/Montserrat-Regular.ttf");
 
     private final CardLayout centerLayout = new CardLayout();
     private final JPanel centerPanel = new JPanel(centerLayout);
     private final JPanel itemsPanel = new ScrollablePanel();
     private final JLabel totalAmount = new JLabel("\u20B10.00");
 
-    public CheckoutPage(Cart cart) {
-        this(cart, null, null, null, null);
-    }
-
-    public CheckoutPage(Cart cart, Runnable onOrderMore, Runnable onStartOver, Runnable onComplete) {
-        this(cart, onOrderMore, onStartOver, onComplete, null);
-    }
-
-    /**
-     * @param onEditItem called with the product whose "Edit Meal" button was pressed
-     */
     public CheckoutPage(Cart cart, Runnable onOrderMore, Runnable onStartOver,
                         Runnable onComplete, Consumer<Product> onEditItem) {
         this.cart = cart != null ? cart : new Cart();
+        this.onOrderMore = onOrderMore != null ? onOrderMore : () -> {};
+        this.onStartOver = onStartOver != null ? onStartOver : () -> {};
+        this.onComplete = onComplete != null ? onComplete : () -> {};
         this.onEditItem = onEditItem != null ? onEditItem : product -> {};
 
-        Runnable orderMore = onOrderMore != null ? onOrderMore : () -> {};
-        Runnable startOver = onStartOver != null ? onStartOver : () -> {};
-        Runnable complete = onComplete != null ? onComplete : () -> {};
-
         setLayout(new BorderLayout());
-        setBackground(OFF_WHITE);
+        setBackground(UiColors.BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         add(buildHeader(), BorderLayout.NORTH);
         add(buildCenter(), BorderLayout.CENTER);
-        add(buildFooter(orderMore, startOver, complete), BorderLayout.SOUTH);
+        add(buildFooter(), BorderLayout.SOUTH);
 
         showCartContents();
     }
 
-    @Override
-    public void setVisible(boolean visible) {
-        super.setVisible(visible);
-        if (visible) {
-            // The cart may have changed on the Menu or Edit Order pages.
-            showCartContents();
-        }
-    }
-
-    private void updateTotal() {
-        totalAmount.setText("\u20B1" + String.format("%,.2f", cart.getTotal()));
-    }
-
-    /** Rebuilds the list of order cards from whatever is in the cart right now. */
-    private void showCartContents() {
-        itemsPanel.removeAll();
-
-        List<Map.Entry<Product, Integer>> entries = new ArrayList<>(cart.getItems().entrySet());
-        for (Map.Entry<Product, Integer> entry : entries) {
-            addOrderItem(buildCard(entry.getKey(), entry.getValue()));
-        }
-
-        itemsPanel.revalidate();
-        itemsPanel.repaint();
-        updateTotal();
-        refreshCenter();
-    }
-
-    private OrderItemCard buildCard(Product product, int quantity) {
-        OrderItemCard card = new OrderItemCard(
-            product,
-            quantity,
-            newQuantity -> {
-                // The + / - circles change the real cart, so the Menu total stays in sync too.
-                cart.setQuantity(product, newQuantity);
-                updateTotal();
-            },
-            () -> onEditItem.accept(product),
-            null
-        );
-        // Each card removes only itself, not the whole list.
-        card.setOnRemove(() -> {
-            cart.setQuantity(product, 0);
-            removeOrderItem(card);
-            updateTotal();
-        });
-        return card;
-    }
-
-    public void addOrderItem(JComponent item) {
-        itemsPanel.add(item);
-        itemsPanel.add(Box.createVerticalStrut(12));
-        itemsPanel.revalidate();
-        itemsPanel.repaint();
-        refreshCenter();
-    }
-
-    /** Removes one order card, plus the spacer that follows it. */
-    public void removeOrderItem(JComponent item) {
-        Component[] children = itemsPanel.getComponents();
-        for (int i = 0; i < children.length; i++) {
-            if (children[i] == item) {
-                itemsPanel.remove(i);
-                if (i < itemsPanel.getComponentCount()
-                        && itemsPanel.getComponent(i) instanceof Box.Filler) {
-                    itemsPanel.remove(i);
-                }
-                break;
-            }
-        }
-        itemsPanel.revalidate();
-        itemsPanel.repaint();
-        refreshCenter();
-    }
-
-    public void clearOrderItems() {
-        itemsPanel.removeAll();
-        itemsPanel.revalidate();
-        itemsPanel.repaint();
-        refreshCenter();
-    }
-
-    private void refreshCenter() {
-        centerLayout.show(centerPanel, itemsPanel.getComponentCount() == 0 ? EMPTY_CARD : LIST_CARD);
-    }
-
+    /** Logo plus the page title. */
     private JPanel buildHeader() {
         JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 0));
         header.setOpaque(false);
         header.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
 
-        JLabel logo = new JLabel(scaledIcon("public/assets/logo/logo-circle.png", 92, 92));
+        header.add(new JLabel(UiKit.icon("public/assets/logo/logo-circle.png", 92, 92)));
 
         JLabel title = new JLabel("Your Order");
         title.setFont(bold.deriveFont(34f));
-        title.setForeground(ORANGE);
-
-        header.add(logo);
+        title.setForeground(UiColors.ORANGE);
         header.add(title);
+
         return header;
     }
 
+    /** Wraps the empty-state message and the scrollable list in a CardLayout. */
     private JComponent buildCenter() {
         centerPanel.setOpaque(false);
         centerPanel.add(buildEmptyState(), EMPTY_CARD);
@@ -175,6 +95,7 @@ public class CheckoutPage extends JPanel {
         return centerPanel;
     }
 
+    /** Shown instead of the list while the cart is empty. */
     private JPanel buildEmptyState() {
         JPanel placeholder = new PlaceholderPanel();
         placeholder.setLayout(new GridBagLayout());
@@ -183,7 +104,7 @@ public class CheckoutPage extends JPanel {
 
         JLabel message = new JLabel("Your order is empty", SwingConstants.CENTER);
         message.setFont(regular.deriveFont(16f));
-        message.setForeground(new Color(150, 150, 150));
+        message.setForeground(UiColors.TEXT_HINT);
         placeholder.add(message);
 
         JPanel wrapper = new JPanel(new BorderLayout());
@@ -193,6 +114,7 @@ public class CheckoutPage extends JPanel {
         return wrapper;
     }
 
+    /** The scrolling column of order cards. */
     private JScrollPane buildListArea() {
         itemsPanel.setLayout(new BoxLayout(itemsPanel, BoxLayout.Y_AXIS));
         itemsPanel.setOpaque(false);
@@ -210,11 +132,12 @@ public class CheckoutPage extends JPanel {
         bar.setUI(new KioskScrollBarUI(SCROLL_THUMB, SCROLL_TRACK));
         bar.setPreferredSize(new Dimension(26, 0));
         bar.setBorder(BorderFactory.createEmptyBorder(6, 2, 6, 8));
-        bar.setBackground(OFF_WHITE);
+        bar.setBackground(UiColors.BACKGROUND);
         return scrollPane;
     }
 
-    private JPanel buildFooter(Runnable orderMore, Runnable startOver, Runnable complete) {
+    /** Total on the left with Order More / Start Over, amount and Pay on the right. */
+    private JPanel buildFooter() {
         JPanel footer = new JPanel(new BorderLayout(16, 0));
         footer.setOpaque(false);
 
@@ -223,14 +146,14 @@ public class CheckoutPage extends JPanel {
         leftColumn.setOpaque(false);
         leftColumn.add(buildTotalLabel());
         leftColumn.add(Box.createVerticalStrut(14));
-        leftColumn.add(buildSmallButtons(orderMore, startOver));
+        leftColumn.add(buildSmallButtons());
 
         JPanel rightColumn = new JPanel();
         rightColumn.setLayout(new BoxLayout(rightColumn, BoxLayout.Y_AXIS));
         rightColumn.setOpaque(false);
         rightColumn.add(buildAmountLabel());
         rightColumn.add(Box.createVerticalStrut(14));
-        rightColumn.add(buildCompleteButton(complete));
+        rightColumn.add(buildCompleteButton());
 
         footer.add(leftColumn, BorderLayout.WEST);
         footer.add(rightColumn, BorderLayout.CENTER);
@@ -240,7 +163,7 @@ public class CheckoutPage extends JPanel {
     private JLabel buildTotalLabel() {
         JLabel label = new JLabel("Total:");
         label.setFont(bold.deriveFont(22f));
-        label.setForeground(ORANGE);
+        label.setForeground(UiColors.ORANGE);
         label.setAlignmentX(Component.LEFT_ALIGNMENT);
         label.setPreferredSize(new Dimension(207, 32));
         label.setMaximumSize(new Dimension(207, 32));
@@ -249,34 +172,35 @@ public class CheckoutPage extends JPanel {
 
     private JLabel buildAmountLabel() {
         totalAmount.setFont(bold.deriveFont(22f));
-        totalAmount.setForeground(ORANGE);
+        totalAmount.setForeground(UiColors.ORANGE);
         totalAmount.setAlignmentX(Component.LEFT_ALIGNMENT);
         totalAmount.setPreferredSize(new Dimension(310, 32));
         totalAmount.setMaximumSize(new Dimension(310, 32));
         return totalAmount;
     }
 
-    private JPanel buildSmallButtons(Runnable orderMore, Runnable startOver) {
+    /** "Order More" on top of "Start Over", both full width of the left column. */
+    private JPanel buildSmallButtons() {
         JPanel column = new JPanel();
         column.setLayout(new BoxLayout(column, BoxLayout.Y_AXIS));
         column.setOpaque(false);
         column.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JButton orderMoreButton = new RoundedButton(
-            "Order More", null, Color.WHITE, new Color(238, 238, 238), LINE);
+        JButton orderMoreButton = new RoundedButton("Order More", null,
+            UiColors.SURFACE, UiColors.HOVER_GREY, UiColors.BORDER);
         orderMoreButton.setFont(regular.deriveFont(13f));
-        orderMoreButton.setForeground(BROWN);
+        orderMoreButton.setForeground(UiColors.BROWN);
         orderMoreButton.setPreferredSize(new Dimension(207, 57));
         orderMoreButton.setMaximumSize(new Dimension(207, 57));
-        orderMoreButton.addActionListener(e -> orderMore.run());
+        orderMoreButton.addActionListener(e -> orderMore());
 
-        JButton startOverButton = new RoundedButton(
-            "Start Over", null, Color.WHITE, new Color(238, 238, 238), LINE);
+        JButton startOverButton = new RoundedButton("Start Over", null,
+            UiColors.SURFACE, UiColors.HOVER_GREY, UiColors.BORDER);
         startOverButton.setFont(regular.deriveFont(13f));
-        startOverButton.setForeground(BROWN);
+        startOverButton.setForeground(UiColors.BROWN);
         startOverButton.setPreferredSize(new Dimension(207, 33));
         startOverButton.setMaximumSize(new Dimension(207, 33));
-        startOverButton.addActionListener(e -> startOver.run());
+        startOverButton.addActionListener(e -> startOver());
 
         column.add(orderMoreButton);
         column.add(Box.createVerticalStrut(8));
@@ -284,40 +208,31 @@ public class CheckoutPage extends JPanel {
         return column;
     }
 
-    private JButton buildCompleteButton(Runnable complete) {
-        ImageIcon checkIcon = scaledIcon("public/assets/icons/check.png", 49, 49);
-
+    /** The big orange "Complete Order" button that leads to payment. */
+    private JButton buildCompleteButton() {
         JButton button = new RoundedButton(
             "<html><center>"
-                + "<font face='" + bold.getFontName() +"' size='6'>Complete</font><br>"
-                + "<font face='" + bold.getFontName() +"' size='6'>Order</font>"
+                + "<font face='" + bold.getFontName() + "' size='6'>Complete</font><br>"
+                + "<font face='" + bold.getFontName() + "' size='6'>Order</font>"
                 + "</center></html>",
-            checkIcon,
-            ORANGE, HOVER, null);
+            UiKit.icon("public/assets/icons/check.png", 49, 49),
+            UiColors.ORANGE, UiColors.ORANGE_HOVER, null);
         button.setFont(bold.deriveFont(17f));
-        button.setForeground(Color.WHITE);
+        button.setForeground(UiColors.WHITE);
         button.setIconTextGap(14);
         // Same height as Order More + gap + Start Over, so both columns line up.
         button.setPreferredSize(new Dimension(310, 98));
         button.setMaximumSize(new Dimension(310, 98));
         button.setAlignmentX(Component.LEFT_ALIGNMENT);
-        button.addActionListener(e -> complete.run());
+        button.addActionListener(e -> completeOrder());
         return button;
     }
 
-    private static Font loadFont(String file) {
-        try {
-            return FontLoader.loadFont("public/assets/fonts/Montserrat/static/" + file);
-        } catch (java.io.IOException | FontFormatException e) {
-            throw new IllegalStateException("Could not load font: " + file, e);
-        }
-    }
+    // ------------------------------------------------------------
+    // Reusable components used by this page
+    // ------------------------------------------------------------
 
-    private static ImageIcon scaledIcon(String path, int width, int height) {
-        Image image = new ImageIcon(path).getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
-        return new ImageIcon(image);
-    }
-
+    /** Rounded button with a soft drop shadow, an optional outline and a hover colour. */
     private static class RoundedButton extends JButton {
         private static final int SHADOW = 4;
         private static final int ARC = 8;
@@ -351,8 +266,7 @@ public class CheckoutPage extends JPanel {
             int faceHeight = getHeight() - SHADOW;
 
             for (int offset = SHADOW; offset > 0; offset--) {
-                int alpha = 5 + (SHADOW - offset) * 5;
-                g2.setColor(new Color(0, 0, 0, alpha));
+                g2.setColor(UiColors.shadow(5 + (SHADOW - offset) * 5));
                 g2.fillRoundRect(0, offset, getWidth(), faceHeight, ARC, ARC);
             }
 
@@ -372,6 +286,7 @@ public class CheckoutPage extends JPanel {
         }
     }
 
+    /** Dashed rounded outline drawn behind the "Your order is empty" message. */
     private static class PlaceholderPanel extends JPanel {
         @Override
         protected void paintComponent(Graphics g) {
@@ -379,7 +294,7 @@ public class CheckoutPage extends JPanel {
 
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(new Color(200, 200, 200));
+            g2.setColor(UiColors.BORDER);
             g2.setStroke(new BasicStroke(
                 1f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_ROUND,
                 10f, new float[]{8f, 6f}, 0f));
@@ -395,5 +310,118 @@ public class CheckoutPage extends JPanel {
         @Override public int getScrollableBlockIncrement(Rectangle visibleRect, int orientation, int direction) { return visibleRect.height; }
         @Override public boolean getScrollableTracksViewportWidth() { return true; }
         @Override public boolean getScrollableTracksViewportHeight() { return false; }
+    }
+
+    // ============================================================
+    // BACKEND - keeping the list and total in step with the cart
+    // ============================================================
+
+    /** The cart may have changed on the Menu or Edit Order pages. */
+    @Override
+    public void setVisible(boolean visible) {
+        super.setVisible(visible);
+        if (visible) {
+            showCartContents();
+        }
+    }
+
+    /** Rebuilds the list of order cards from whatever is in the cart right now. */
+    private void showCartContents() {
+        itemsPanel.removeAll();
+
+        List<Map.Entry<Product, Integer>> entries = new ArrayList<>(cart.getItems().entrySet());
+        for (Map.Entry<Product, Integer> entry : entries) {
+            addOrderItem(buildCard(entry.getKey(), entry.getValue()));
+        }
+
+        itemsPanel.revalidate();
+        itemsPanel.repaint();
+        updateTotal();
+        refreshCenter();
+    }
+
+    /** One line of the order: picture, quantity controls, edit and remove. */
+    private OrderItemCard buildCard(Product product, int quantity) {
+        OrderItemCard card = new OrderItemCard(
+            product,
+            quantity,
+            newQuantity -> {
+                // The + / - circles change the real cart, so the Menu total stays in sync too.
+                cart.setQuantity(product, newQuantity);
+                updateTotal();
+            },
+            () -> editItem(product),
+            null // wired up below, once the card exists
+        );
+        // Each card removes only itself, not the whole list.
+        card.setOnRemove(() -> removeItem(product, card));
+        return card;
+    }
+
+    /** Puts one order card (plus its spacer) into the scrolling list. */
+    private void addOrderItem(JComponent item) {
+        itemsPanel.add(item);
+        itemsPanel.add(Box.createVerticalStrut(12));
+        itemsPanel.revalidate();
+        itemsPanel.repaint();
+        refreshCenter();
+    }
+
+    /** Drops one order card, plus the spacer that follows it. */
+    private void removeOrderItem(JComponent item) {
+        Component[] children = itemsPanel.getComponents();
+        for (int i = 0; i < children.length; i++) {
+            if (children[i] == item) {
+                itemsPanel.remove(i);
+                if (i < itemsPanel.getComponentCount()
+                        && itemsPanel.getComponent(i) instanceof Box.Filler) {
+                    itemsPanel.remove(i);
+                }
+                break;
+            }
+        }
+        itemsPanel.revalidate();
+        itemsPanel.repaint();
+        refreshCenter();
+    }
+
+    /** Switches between the empty state and the list. */
+    private void refreshCenter() {
+        centerLayout.show(centerPanel, itemsPanel.getComponentCount() == 0 ? EMPTY_CARD : LIST_CARD);
+    }
+
+    private void updateTotal() {
+        totalAmount.setText(UiKit.peso(cart.getTotal()));
+    }
+
+    // ------------------------------------------------------------
+    // Button actions - KioskMain turns these into page changes
+    // ------------------------------------------------------------
+
+    /** "Edit Meal" on a card: KioskMain shows the Edit Order page. */
+    private void editItem(Product product) {
+        onEditItem.accept(product);
+    }
+
+    /** The trash icon on a card: drop that line, take it off the list and refresh the total. */
+    private void removeItem(Product product, OrderItemCard card) {
+        cart.setQuantity(product, 0);
+        removeOrderItem(card);
+        updateTotal();
+    }
+
+    /** "Order More": back to the menu. */
+    private void orderMore() {
+        onOrderMore.run();
+    }
+
+    /** "Start Over": KioskMain shows the confirmation prompt. */
+    private void startOver() {
+        onStartOver.run();
+    }
+
+    /** "Complete Order": KioskMain shows the payment page (only if there is something to pay for). */
+    private void completeOrder() {
+        onComplete.run();
     }
 }

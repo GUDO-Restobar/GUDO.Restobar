@@ -6,11 +6,18 @@ import java.awt.event.MouseEvent;
 import java.util.function.Consumer;
 import javax.swing.*;
 
+/**
+ * One product tile on the menu grid.
+ *
+ * Main purpose: reusable UI component - shows the product's picture, name and
+ * price and calls {@code onSelect} when it is tapped. While the product is
+ * sold out (or fully reserved by the current cart) it greys itself out, shows
+ * a red UNAVAILABLE label and refuses to fire the callback.
+ */
 public class ItemCard extends JPanel {
 
     private static final int WIDTH = 188;
     private static final int HEIGHT = 221;
-    private static final Color UNAVAILABLE_RED = new Color(198, 40, 40); // #C62828
     private static final String UNAVAILABLE_TEXT = "UNAVAILABLE";
 
     private final Product product;
@@ -22,8 +29,8 @@ public class ItemCard extends JPanel {
         this.product = product;
         this.font = font;
         setLayout(new BorderLayout());
-        setBackground(new Color(246, 246, 246));
-        setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)));
+        setBackground(UiColors.BACKGROUND);
+        setBorder(BorderFactory.createLineBorder(UiColors.BORDER));
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
@@ -78,14 +85,14 @@ public class ItemCard extends JPanel {
             g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
                 RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
-            g2.setColor(new Color(246, 246, 246, 175));
+            g2.setColor(UiColors.overlay(UiColors.BACKGROUND, 175));
             g2.fillRect(0, 0, getWidth(), getHeight());
 
             g2.setFont(font.deriveFont(Font.BOLD, 17f));
             FontMetrics fm = g2.getFontMetrics();
             int x = (getWidth() - fm.stringWidth(UNAVAILABLE_TEXT)) / 2;
             int y = (getHeight() - fm.getHeight()) / 2 + fm.getAscent();
-            g2.setColor(UNAVAILABLE_RED);
+            g2.setColor(UiColors.DANGER);
             g2.drawString(UNAVAILABLE_TEXT, x, y);
             g2.dispose();
         }
@@ -99,7 +106,7 @@ public class ItemCard extends JPanel {
 
         JTextArea name = new JTextArea(product.getName());
         name.setFont(font.deriveFont(15f));
-        name.setForeground(new Color(74, 45, 35));
+        name.setForeground(UiColors.BROWN);
         name.setOpaque(false);
         name.setEditable(false);
         name.setFocusable(false);
@@ -110,7 +117,7 @@ public class ItemCard extends JPanel {
 
         JLabel price = new JLabel("\u20B1" + String.format("%.2f", product.getPrice()));
         price.setFont(font.deriveFont(16f));
-        price.setForeground(new Color(204, 80, 0));
+        price.setForeground(UiColors.ORANGE_DARK);
 
         text.add(name, BorderLayout.CENTER);
         text.add(price, BorderLayout.SOUTH);

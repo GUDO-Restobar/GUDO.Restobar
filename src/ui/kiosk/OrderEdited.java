@@ -1,53 +1,69 @@
 package ui.kiosk;
 
+// ============================================================
+// IMPORTS
+// ============================================================
 import java.awt.*;
 import javax.swing.*;
-import util.*;
+import util.ConfirmationBackground;
+import util.UiColors;
+import util.UiKit;
 
 /**
- * Confirmation shown after "Save Changes to Order". It stays on screen for
- * 2 seconds, then hands control back so the kiosk can return to Checkout.
+ * Confirmation shown after "Save Changes to Order". It shows the new running
+ * total and hands control back to KioskMain after the same delay as
+ * {@link OrderAdded}, so both confirmations feel identical.
  */
 public class OrderEdited extends ConfirmationBackground {
-    private static final Color ORANGE = new Color(236, 94, 2);
-    private static final Color BROWN = new Color(74, 45, 35);
-    private static final Color OFF_WHITE = new Color(246, 246, 246);
-    private static final int DISPLAY_MILLIS = 2000;
 
+    // ============================================================
+    // FRONTEND - logo, message, total and the bag illustration
+    // ============================================================
+
+    /** Runs when it is time to go back to the checkout page. */
+    private final Runnable onFinished;
+
+    /** Stops the automatic redirect if the page is thrown away early. */
     private final Timer redirectTimer;
 
     public OrderEdited(double total, Runnable onFinished) {
-        setLayout(new BorderLayout());
-        setBackground(OFF_WHITE);
+        this.onFinished = onFinished != null ? onFinished : () -> {};
 
-        Font bold = loadFont("Montserrat/static/Montserrat-Bold.ttf");
-        Font regular = loadFont("Montserrat/static/Montserrat-Regular.ttf");
+        // Built first so removeNotify() below can stop it.
+        redirectTimer = new Timer(AUTO_REDIRECT_MILLIS, e -> this.onFinished.run());
+        redirectTimer.setRepeats(false);
+
+        setLayout(new BorderLayout());
+        setBackground(UiColors.BACKGROUND);
+
+        Font bold = UiKit.font("Montserrat/static/Montserrat-Bold.ttf");
+        Font regular = UiKit.font("Montserrat/static/Montserrat-Regular.ttf");
 
         JPanel content = new JPanel();
         content.setOpaque(false);
         content.setLayout(new BoxLayout(content, BoxLayout.Y_AXIS));
         content.setBorder(BorderFactory.createEmptyBorder(95, 24, 70, 24));
 
-        JLabel logo = new JLabel(scaledIcon("public/assets/logo/logo.png", 160, 160));
+        JLabel logo = new JLabel(UiKit.icon("public/assets/logo/logo.png", 160, 160));
         logo.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JLabel heading = new JLabel("<html><center>Your Cravings has<br>Been Modified</center></html>");
         heading.setFont(bold.deriveFont(31f));
-        heading.setForeground(ORANGE);
+        heading.setForeground(UiColors.ORANGE);
         heading.setAlignmentX(Component.CENTER_ALIGNMENT);
         heading.setHorizontalAlignment(SwingConstants.CENTER);
 
         JLabel subheading = new JLabel("Your total has been updated");
         subheading.setFont(regular.deriveFont(16f));
-        subheading.setForeground(BROWN);
+        subheading.setForeground(UiColors.BROWN);
         subheading.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel totalLabel = new JLabel("\u20B1" + String.format("%,.2f", total));
+        JLabel totalLabel = new JLabel(UiKit.peso(total));
         totalLabel.setFont(bold.deriveFont(21f));
-        totalLabel.setForeground(ORANGE);
+        totalLabel.setForeground(UiColors.ORANGE);
         totalLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JLabel bag = new JLabel(scaledIcon("public/assets/icons/hd-bag.png", 180, 180));
+        JLabel bag = new JLabel(UiKit.icon("public/assets/icons/hd-bag.png", 180, 180));
         bag.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         content.add(logo);
@@ -62,30 +78,17 @@ public class OrderEdited extends ConfirmationBackground {
         content.add(Box.createVerticalGlue());
         add(content, BorderLayout.CENTER);
 
-        redirectTimer = new Timer(DISPLAY_MILLIS, e -> {
-            if (onFinished != null) onFinished.run();
-        });
-        redirectTimer.setRepeats(false);
         redirectTimer.start();
     }
+
+    // ============================================================
+    // BACKEND - the automatic redirect back to checkout
+    // ============================================================
 
     @Override
     public void removeNotify() {
         // If this page is discarded early, make sure the timer cannot fire later.
         redirectTimer.stop();
         super.removeNotify();
-    }
-
-    private static ImageIcon scaledIcon(String path, int width, int height) {
-        Image image = new ImageIcon(path).getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
-        return new ImageIcon(image);
-    }
-
-    private static Font loadFont(String file) {
-        try {
-            return FontLoader.loadFont("public/assets/fonts/" + file);
-        } catch (java.io.IOException | FontFormatException e) {
-            throw new IllegalStateException("Could not load font: " + file, e);
-        }
     }
 }

@@ -3,21 +3,20 @@ package util;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.io.IOException;
 import java.util.function.IntConsumer;
 import javax.swing.*;
 
+/**
+ * One line of the order on the checkout screen.
+ *
+ * Main purpose: reusable UI component - shows the product picture, name,
+ * line total, the - / quantity / + circles, an "Edit Meal" button and a trash
+ * icon. It asks the owner what "edit" and "remove" mean through its
+ * constructor callbacks, so CheckoutPage stays in charge of the cart.
+ *
+ * The trash icon needs two presses: the first one only shows "Are you sure?".
+ */
 public class OrderItemCard extends JPanel {
-
-    private static final Color ORANGE = new Color(236, 94, 2);
-    private static final Color ORANGE_HOVER = new Color(255, 120, 35);
-    private static final Color DARK_TEXT = new Color(43, 43, 43);
-    private static final Color ADDON_TEXT = new Color(90, 90, 90);
-    private static final Color CARD_BORDER = new Color(226, 226, 226);
-    private static final Color BUTTON_BORDER = new Color(190, 190, 190);
-    private static final Color BUTTON_HOVER = new Color(242, 242, 242);
-    private static final Color CONFIRM_RED = new Color(198, 40, 40); // #C62828
-    private static final Color DISABLED_GREY = new Color(200, 200, 200);
 
     /** Height of the name / quantity row. Matches the 30px circle buttons. */
     private static final int HEADER_HEIGHT = 30;
@@ -33,8 +32,8 @@ public class OrderItemCard extends JPanel {
     private static final int ARC = 14;
     private static final int SHADOW = 3;
 
-    private final Font bold = loadFont("Montserrat-Bold.ttf");
-    private final Font regular = loadFont("Montserrat-Regular.ttf");
+    private final Font bold = UiKit.font("Montserrat/static/Montserrat-Bold.ttf");
+    private final Font regular = UiKit.font("Montserrat/static/Montserrat-Regular.ttf");
 
     /** Set by the first press of the trash icon. */
     private boolean confirming;
@@ -94,14 +93,6 @@ public class OrderItemCard extends JPanel {
         setMaximumSize(new Dimension(Integer.MAX_VALUE, CARD_HEIGHT));
     }
 
-    public Product getProduct() {
-        return product;
-    }
-
-    public int getQuantity() {
-        return quantity;
-    }
-
     /** Applies a +1 / -1 change. The quantity never drops below 1; the trash icon removes the item. */
     private void changeQuantity(int change) {
         int updated = Math.min(maxQuantity(), Math.max(1, quantity + change));
@@ -110,7 +101,7 @@ public class OrderItemCard extends JPanel {
         }
         quantity = updated;
         quantityLabel.setText(String.valueOf(quantity));
-        priceLabel.setText(formatPrice(product.getPrice() * quantity));
+        priceLabel.setText(UiKit.peso(product.getPrice() * quantity));
         updatePlusButton();
         onQuantityChange.accept(quantity);
     }
@@ -127,17 +118,13 @@ public class OrderItemCard extends JPanel {
         }
     }
 
-    private static String formatPrice(double price) {
-        return "\u20B1" + String.format("%,.2f", price);
-    }
-
     /** Lets the owner decide what "remove" means for this specific card. */
     public void setOnRemove(Runnable action) {
         this.onRemove = action != null ? action : () -> {};
     }
 
     private JLabel buildImage(String imagePath) {
-        JLabel image = new JLabel(scaledIcon(imagePath, 130, 130));
+        JLabel image = new JLabel(UiKit.icon(imagePath, 130, 130));
         image.setVerticalAlignment(SwingConstants.CENTER);
         return image;
     }
@@ -157,11 +144,11 @@ public class OrderItemCard extends JPanel {
         JPanel header = new JPanel(new HeaderLayout());
         header.setOpaque(false);
 
-        MealNameLabel nameLabel = new MealNameLabel(name, bold, DARK_TEXT);
+        MealNameLabel nameLabel = new MealNameLabel(name, bold, UiColors.TEXT_DARK);
 
         quantityLabel = new JLabel(String.valueOf(quantity));
         quantityLabel.setFont(bold.deriveFont(20f));
-        quantityLabel.setForeground(ORANGE);
+        quantityLabel.setForeground(UiColors.ORANGE);
 
         CircleButton minus = new CircleButton(false);
         minus.addActionListener(e -> changeQuantity(-1));
@@ -209,7 +196,7 @@ public class OrderItemCard extends JPanel {
             for (String addOn : addOns) {
                 JLabel label = new JLabel("\u2022 " + addOn);
                 label.setFont(regular.deriveFont(11f));
-                label.setForeground(ADDON_TEXT);
+                label.setForeground(UiColors.TEXT_MUTED);
                 label.setAlignmentX(Component.LEFT_ALIGNMENT);
                 label.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0));
                 column.add(label);
@@ -225,7 +212,7 @@ public class OrderItemCard extends JPanel {
 
         OutlineButton edit = new OutlineButton("Edit Meal");
         edit.setFont(regular.deriveFont(14f));
-        edit.setForeground(DARK_TEXT);
+        edit.setForeground(UiColors.TEXT_DARK);
         edit.setPreferredSize(new Dimension(145, 25));
         edit.addActionListener(e -> onEdit.run());
 
@@ -237,16 +224,16 @@ public class OrderItemCard extends JPanel {
         JPanel column = new JPanel(new BorderLayout());
         column.setOpaque(false);
 
-        priceLabel = new JLabel(formatPrice(product.getPrice() * quantity));
+        priceLabel = new JLabel(UiKit.peso(product.getPrice() * quantity));
         priceLabel.setFont(bold.deriveFont(15f));
-        priceLabel.setForeground(ORANGE);
+        priceLabel.setForeground(UiColors.ORANGE);
 
         JPanel priceRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         priceRow.setOpaque(false);
         priceRow.add(priceLabel);
         column.add(priceRow, BorderLayout.NORTH);
 
-        JButton remove = new JButton(scaledIcon(TRASH_ICON, TRASH_SIZE, TRASH_SIZE));
+        JButton remove = new JButton(UiKit.icon(TRASH_ICON, TRASH_SIZE, TRASH_SIZE));
         remove.setOpaque(false);
         remove.setContentAreaFilled(false);
         remove.setBorderPainted(false);
@@ -280,14 +267,14 @@ public class OrderItemCard extends JPanel {
         int faceHeight = getHeight() - SHADOW;
 
         for (int offset = SHADOW; offset > 0; offset--) {
-            g2.setColor(new Color(0, 0, 0, 4 + (SHADOW - offset) * 3));
+            g2.setColor(UiColors.shadow(4 + (SHADOW - offset) * 3));
             g2.fillRoundRect(0, offset, getWidth() - 1, faceHeight, ARC, ARC);
         }
 
-        g2.setColor(Color.WHITE);
+        g2.setColor(UiColors.SURFACE);
         g2.fillRoundRect(0, 0, getWidth() - 1, faceHeight, ARC, ARC);
 
-        g2.setColor(CARD_BORDER);
+        g2.setColor(UiColors.BORDER_CARD);
         g2.setStroke(new BasicStroke(1f));
         g2.drawRoundRect(0, 0, getWidth() - 2, faceHeight - 1, ARC, ARC);
 
@@ -298,7 +285,7 @@ public class OrderItemCard extends JPanel {
             g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
                 RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
             g2.setFont(bold.deriveFont(11f));
-            g2.setColor(CONFIRM_RED);
+            g2.setColor(UiColors.DANGER);
             FontMetrics fm = g2.getFontMetrics();
             int x = icon.x - 8 - fm.stringWidth(CONFIRM_TEXT);
             int y = icon.y + (trashButton.getHeight() - fm.getHeight()) / 2 + fm.getAscent();
@@ -307,19 +294,6 @@ public class OrderItemCard extends JPanel {
 
         g2.dispose();
         super.paintComponent(g);
-    }
-
-    private static Font loadFont(String file) {
-        try {
-            return FontLoader.loadFont("public/assets/fonts/Montserrat/static/" + file);
-        } catch (IOException | FontFormatException e) {
-            throw new IllegalStateException("Could not load font: " + file, e);
-        }
-    }
-
-    private static ImageIcon scaledIcon(String path, int width, int height) {
-        Image image = new ImageIcon(path).getImage().getScaledInstance(width, height, Image.SCALE_SMOOTH);
-        return new ImageIcon(image);
     }
 
     /**
@@ -541,10 +515,11 @@ public class OrderItemCard extends JPanel {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-            g2.setColor(!isEnabled() ? DISABLED_GREY : hover ? ORANGE_HOVER : ORANGE);
+            g2.setColor(!isEnabled() ? UiColors.DISABLED
+                : hover ? UiColors.ORANGE_HOVER : UiColors.ORANGE);
             g2.fillOval(0, 0, 25, 25);
 
-            g2.setColor(Color.WHITE);
+            g2.setColor(UiColors.WHITE);
             g2.setStroke(new BasicStroke(2.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             g2.drawLine(8, 13, 18, 13);
             if (plus) {
@@ -575,9 +550,9 @@ public class OrderItemCard extends JPanel {
         protected void paintComponent(Graphics g) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-            g2.setColor(hover ? BUTTON_HOVER : Color.WHITE);
+            g2.setColor(hover ? UiColors.HOVER_GREY_PALE : UiColors.SURFACE);
             g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 6, 6);
-            g2.setColor(BUTTON_BORDER);
+            g2.setColor(UiColors.BORDER_BUTTON);
             g2.drawRoundRect(0, 0, getWidth() - 2, getHeight() - 2, 6, 6);
             g2.dispose();
             super.paintComponent(g);

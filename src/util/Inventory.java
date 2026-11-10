@@ -34,8 +34,4 @@ public final class Inventory {
         int inCart = cart.getItems().getOrDefault(product, 0);
         return Math.max(0, getStock(product) - inCart);
     }
-
-    public static boolean isInStock(Product product) {
-        return getStock(product) > 0;
-    }
 }
