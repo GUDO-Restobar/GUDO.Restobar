@@ -1,12 +1,12 @@
-import static ui.manager.ManagerTheme.*;
-
 import java.awt.*;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.swing.*;
 import ui.manager.EditStockItems;
+import static ui.manager.ManagerTheme.*;
 import ui.manager.OrderHistory;
 import ui.manager.SalesSummary;
+import util.UiColors;
 
 /**
  * Manager window. The LEFT side is the sidebar (logo + tabs) and lives here.
@@ -27,7 +27,7 @@ public class ManagerMain extends JFrame {
         setTitle("Gudo Restobar Manager");
         setSize(1340, 1040);
         setLayout(null);
-        getContentPane().setBackground(MAINWHITE);
+        getContentPane().setBackground(UiColors.BACKGROUND);
         setLocationRelativeTo(null);
         setResizable(false);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -51,8 +51,8 @@ public class ManagerMain extends JFrame {
         cardLayout.show(content, tab);
         for (Map.Entry<String, JButton> entry : tabButtons.entrySet()) {
             boolean active = entry.getKey().equals(tab);
-            entry.getValue().setBackground(active ? MAINWHITE : MAINORANGE);
-            entry.getValue().setForeground(active ? MAINORANGE : MAINWHITE);
+            entry.getValue().setBackground(active ? UiColors.BACKGROUND : UiColors.ORANGE);
+            entry.getValue().setForeground(active ? UiColors.ORANGE : UiColors.BACKGROUND);
         }
     }
 
@@ -60,14 +60,14 @@ public class ManagerMain extends JFrame {
 
     private JPanel buildSidebar() {
         JPanel sidebar = new JPanel(null);
-        sidebar.setBackground(MAINORANGE);
+        sidebar.setBackground(UiColors.ORANGE);
 
         JLabel logo = new JLabel(new ImageIcon(LOGO.getImage().getScaledInstance(209, 219, Image.SCALE_SMOOTH)));
         logo.setBounds(61, 25, 209, 219);
 
         JLabel welcome = new JLabel("Welcome, LORD GUDO", SwingConstants.CENTER);
         welcome.setFont(BOLD.deriveFont(24f));
-        welcome.setForeground(MAINWHITE);
+        welcome.setForeground(UiColors.BACKGROUND);
         welcome.setBounds(17, 262, 298, 31);
 
         sidebar.add(logo);

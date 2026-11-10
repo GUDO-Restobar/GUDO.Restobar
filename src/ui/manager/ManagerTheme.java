@@ -6,10 +6,9 @@ import javax.swing.*;
 import util.FontLoader;
 import util.KioskScrollBarUI;
 
-/** Colors, fonts and the logo shared by the manager screens. */
+/** Fonts, the logo and the kiosk-style scroll bar shared by the manager screens.
+ *  Colors come from {@link util.UiColors} so the manager matches the kiosk exactly. */
 public final class ManagerTheme {
-    public static final Color MAINWHITE = new Color(246, 246, 246);
-    public static final Color MAINORANGE = Color.decode("#EC5E02");
     public static final ImageIcon LOGO = new ImageIcon("public\\assets\\logo\\logo-circle.png");
     public static final Font BOLD = loadFont("Montserrat/static/Montserrat-Bold.ttf");
     public static final Font REGULAR = loadFont("Montserrat/static/Montserrat-Regular.ttf");

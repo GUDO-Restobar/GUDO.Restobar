@@ -2,13 +2,15 @@ package ui.manager;
 
 import static ui.manager.ManagerTheme.*;
 
-import java.awt.*;
 import data.DbWatcher;
 import data.dbconnect;
+import java.awt.*;
 import java.sql.*;
 import java.util.*;
 import java.util.List;
 import javax.swing.*;
+import util.UiColors;
+import util.UiKit;
 
 /** The "Edit Stock Items" screen (right-hand card of {@code ManagerMain}). */
 public class EditStockItems extends JPanel {
@@ -21,7 +23,7 @@ public class EditStockItems extends JPanel {
 
     public EditStockItems() {
         setLayout(new BorderLayout());
-        setBackground(MAINWHITE);
+        setBackground(UiColors.BACKGROUND);
 
         loadStockItems();
         add(editStockItems(), BorderLayout.CENTER);
@@ -122,11 +124,11 @@ public class EditStockItems extends JPanel {
     private JPanel editStockItems() {
         int cornerRadius = 42;
         JPanel view = new JPanel(null);
-        view.setBackground(MAINWHITE);
+        view.setBackground(UiColors.BACKGROUND);
 
         JLabel title = new JLabel("EDIT STOCK ITEMS");
         title.setFont(BOLD.deriveFont(33f));
-        title.setForeground(MAINORANGE);
+        title.setForeground(UiColors.ORANGE);
         title.setBounds(33, 42, 600, 44);
         view.add(title);
 
@@ -137,20 +139,20 @@ public class EditStockItems extends JPanel {
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(getBackground());
                 g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, cornerRadius, cornerRadius);
-                g2.setColor(MAINORANGE);
+                g2.setColor(UiColors.ORANGE);
                 g2.setStroke(new BasicStroke(3));
                 g2.drawRoundRect(2, 2, getWidth() - 5, getHeight() - 5, cornerRadius, cornerRadius);
                 g2.dispose();
             }
         };
         panel.setOpaque(false);
-        panel.setBackground(MAINWHITE);
+        panel.setBackground(UiColors.BACKGROUND);
         panel.setBounds(33, 167, 942, 740);
 
         // Sections (Meals / Snacks / Drinks), each a 2-column grid of item cards.
         JPanel list = new JPanel();
         list.setLayout(new BoxLayout(list, BoxLayout.Y_AXIS));
-        list.setBackground(MAINWHITE);
+        list.setBackground(UiColors.BACKGROUND);
         list.setBorder(BorderFactory.createEmptyBorder(12, 4, 12, 4));
 
         List<StockCard> cards = stockCards;
@@ -166,7 +168,7 @@ public class EditStockItems extends JPanel {
                 list.add(heading);
 
                 grid = new JPanel(new GridLayout(0, 2, 14, 12));
-                grid.setBackground(MAINWHITE);
+                grid.setBackground(UiColors.BACKGROUND);
                 grid.setAlignmentX(Component.LEFT_ALIGNMENT);
                 list.add(grid);
             }
@@ -185,15 +187,15 @@ public class EditStockItems extends JPanel {
             ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
             ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
         scroll.setOpaque(false);
-        scroll.getViewport().setBackground(MAINWHITE);
+        scroll.getViewport().setBackground(UiColors.BACKGROUND);
         scroll.setBorder(null);                       // like MenuPage; the margin is on the panel instead
         panel.setBorder(BorderFactory.createEmptyBorder(24, 24, 24, 24));
-        styleScrollBar(scroll, MAINWHITE);            // shared kiosk-style scroll bar (ManagerTheme)
+        styleScrollBar(scroll, UiColors.BACKGROUND);   // shared kiosk-style scroll bar (ManagerTheme)
         panel.add(scroll, BorderLayout.CENTER);
         view.add(panel);
 
         // Apply / Discard
-        JButton apply = actionButton("Apply Changes", MAINORANGE, MAINWHITE);
+        JButton apply = actionButton("Apply Changes", UiColors.ORANGE, UiColors.BACKGROUND);
         apply.setBounds(533, 925, 215, 40);
         apply.addActionListener(e -> {
             if (!saveStock()) return;
@@ -201,7 +203,7 @@ public class EditStockItems extends JPanel {
             for (StockCard card : cards) card.refresh();
             JOptionPane.showMessageDialog(this, "Stock changes applied.");
         });
-        JButton discard = actionButton("Discard Changes", MAINWHITE, Color.decode("#C62828"));
+        JButton discard = actionButton("Discard Changes", UiColors.BACKGROUND, UiColors.DANGER);
         discard.setBounds(760, 925, 215, 40);
         discard.addActionListener(e -> {
             for (StockItem item : stockItems) item.stock = item.committed;
@@ -219,7 +221,7 @@ public class EditStockItems extends JPanel {
         b.setBackground(bg);
         b.setForeground(fg);
         b.setOpaque(true);
-        b.setBorder(BorderFactory.createLineBorder(new Color(225, 225, 225)));
+        b.setBorder(BorderFactory.createLineBorder(UiColors.BORDER_FIELD_SOFT));
         b.setFocusPainted(false);
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         return b;
@@ -256,15 +258,15 @@ public class EditStockItems extends JPanel {
         StockCard(StockItem item) {
             this.item = item;
             setLayout(null);
-            setBackground(MAINWHITE);
-            setBorder(BorderFactory.createLineBorder(new Color(215, 215, 215)));
+            setBackground(UiColors.BACKGROUND);
+            setBorder(BorderFactory.createLineBorder(UiColors.BORDER_FIELD));
             setPreferredSize(new Dimension(400, 68));
 
             JLabel image = new JLabel();
             image.setBounds(8, 12, 44, 44);
-            ImageIcon icon = new ImageIcon(item.imagePath);
+            ImageIcon icon = UiKit.icon(item.imagePath, 44, 44);
             if (icon.getIconWidth() > 0) {
-                image.setIcon(new ImageIcon(icon.getImage().getScaledInstance(44, 44, Image.SCALE_SMOOTH)));
+                image.setIcon(icon);
             }
             add(image);
 
@@ -274,7 +276,7 @@ public class EditStockItems extends JPanel {
 
             price = new JLabel("\u20B1" + String.format("%.2f", item.price));
             price.setFont(BOLD.deriveFont(12f));
-            price.setForeground(MAINORANGE);
+            price.setForeground(UiColors.ORANGE);
             add(price);
 
             minus.addActionListener(e -> change(-1));
@@ -307,7 +309,7 @@ public class EditStockItems extends JPanel {
         void refresh() {
             int delta = item.stock - item.committed;
             count.setText(delta > 0 ? "+" + delta : delta < 0 ? "\u2212" + (-delta) : "0");
-            count.setForeground(delta > 0 ? MAINORANGE : delta < 0 ? new Color(198, 40, 40) : Color.BLACK);
+            count.setForeground(delta > 0 ? UiColors.ORANGE : delta < 0 ? UiColors.DANGER : UiColors.BLACK);
             inStock.setText(delta == 0
                 ? "In stock: " + item.committed
                 : "In stock: " + item.committed + " \u2192 " + item.stock);
@@ -336,14 +338,14 @@ public class EditStockItems extends JPanel {
                 protected void paintComponent(Graphics g) {
                     Graphics2D g2 = (Graphics2D) g.create();
                     g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    g2.setColor(MAINORANGE);
+                    g2.setColor(UiColors.ORANGE);
                     g2.fillOval(0, 0, getWidth() - 1, getHeight() - 1);
                     g2.dispose();
                     super.paintComponent(g);
                 }
             };
             b.setFont(BOLD.deriveFont(15f));
-            b.setForeground(MAINWHITE);
+            b.setForeground(UiColors.BACKGROUND);
             b.setMargin(new Insets(0, 0, 0, 0));
             b.setContentAreaFilled(false);
             b.setBorderPainted(false);

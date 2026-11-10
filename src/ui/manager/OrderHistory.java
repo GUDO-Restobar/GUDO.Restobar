@@ -11,6 +11,7 @@ import java.util.*;
 import java.util.List;
 import javax.swing.*;
 import javax.swing.table.*;
+import util.UiColors;
 
 /** The "Order History" screen (right-hand card of {@code ManagerMain}). */
 public class OrderHistory extends JPanel {
@@ -33,7 +34,7 @@ public class OrderHistory extends JPanel {
     public OrderHistory() {
         JPanel view = this;
         setLayout(null);
-        setBackground(MAINWHITE);
+        setBackground(UiColors.BACKGROUND);
         setOpaque(true);
 
         // Plain container for the table (no outline), as large as the page allows.
@@ -52,13 +53,13 @@ public class OrderHistory extends JPanel {
 
         JScrollPane scrollPane = new JScrollPane(table);
         scrollPane.setOpaque(false);
-        scrollPane.getViewport().setBackground(Color.WHITE);
-        scrollPane.setBorder(BorderFactory.createLineBorder(ROW_LINE));
+        scrollPane.getViewport().setBackground(UiColors.SURFACE);
+        scrollPane.setBorder(BorderFactory.createLineBorder(UiColors.BORDER_ROW));
         orderHistory.add(scrollPane, BorderLayout.CENTER);
 
         JLabel label = new JLabel("ORDER HISTORY");
         label.setFont(BOLD.deriveFont(33f));
-        label.setForeground(MAINORANGE);
+        label.setForeground(UiColors.ORANGE);
         label.setBounds(33, 42, 600, 44);
         label.setVerticalAlignment(SwingConstants.CENTER);
         label.setHorizontalAlignment(SwingConstants.LEFT);
@@ -189,8 +190,8 @@ public class OrderHistory extends JPanel {
         // ---- DELETE: select one or more rows, then press the button (or the Delete key).
         JButton deleteButton = new JButton("Delete Selected Order");
         deleteButton.setFont(BOLD.deriveFont(12f));
-        deleteButton.setBackground(Color.decode("#C62828"));
-        deleteButton.setForeground(Color.WHITE);
+        deleteButton.setBackground(UiColors.DANGER);
+        deleteButton.setForeground(UiColors.WHITE);
         deleteButton.setOpaque(true);
         deleteButton.setBorderPainted(false);
         deleteButton.setFocusPainted(false);
@@ -249,13 +250,13 @@ public class OrderHistory extends JPanel {
     private static void styleTable(JTable table) {
         table.setRowHeight(50);
         table.setFont(REGULAR.deriveFont(13f));
-        table.setBackground(Color.WHITE);
+        table.setBackground(UiColors.SURFACE);
         table.setShowGrid(false);
         table.setShowHorizontalLines(false);
         table.setIntercellSpacing(new Dimension(0, 0));
         table.setFillsViewportHeight(true);
-        table.setSelectionBackground(new Color(253, 235, 222));
-        table.setSelectionForeground(Color.BLACK);
+        table.setSelectionBackground(UiColors.SELECTION);
+        table.setSelectionForeground(UiColors.BLACK);
 
         javax.swing.table.JTableHeader header = table.getTableHeader();
         header.setReorderingAllowed(false);
@@ -266,8 +267,8 @@ public class OrderHistory extends JPanel {
             public Component getTableCellRendererComponent(JTable t, Object v, boolean sel, boolean foc, int r, int c) {
                 JLabel l = (JLabel) super.getTableCellRendererComponent(t, v, false, false, r, c);
                 l.setFont(BOLD.deriveFont(13f));
-                l.setForeground(MAINWHITE);
-                l.setBackground(MAINORANGE);
+                l.setForeground(UiColors.BACKGROUND);
+                l.setBackground(UiColors.ORANGE);
                 l.setOpaque(true);
                 l.setHorizontalAlignment(SwingConstants.LEFT);
                 l.setBorder(BorderFactory.createEmptyBorder(0, 16, 0, 8));
@@ -280,22 +281,22 @@ public class OrderHistory extends JPanel {
             @Override
             public Component getTableCellRendererComponent(JTable t, Object v, boolean sel, boolean foc, int r, int c) {
                 JLabel l = (JLabel) super.getTableCellRendererComponent(t, v, sel, false, r, c);
-                l.setBackground(sel ? t.getSelectionBackground() : Color.WHITE);
+                l.setBackground(sel ? t.getSelectionBackground() : UiColors.SURFACE);
                 l.setHorizontalAlignment(SwingConstants.LEFT);
                 l.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createMatteBorder(0, 0, 1, 0, ROW_LINE),
+                    BorderFactory.createMatteBorder(0, 0, 1, 0, UiColors.BORDER_ROW),
                     BorderFactory.createEmptyBorder(0, 16, 0, 8)));
                 if (c == 0) {                                   // Order ID = link
                     String text = "#" + v;
                     l.setText(r == hoverRow[0] ? "<html><u>" + text + "</u></html>" : text);
                     l.setFont(BOLD.deriveFont(13f));
-                    l.setForeground(MAINORANGE);
+                    l.setForeground(UiColors.ORANGE);
                 } else if (c == 4) {                            // Total Amount
                     l.setFont(BOLD.deriveFont(13f));
-                    l.setForeground(Color.BLACK);
+                    l.setForeground(UiColors.BLACK);
                 } else {
                     l.setFont(REGULAR.deriveFont(13f));
-                    l.setForeground(TEXT_GRAY);
+                    l.setForeground(UiColors.TEXT_MUTED);
                 }
                 return l;
             }
@@ -308,13 +309,13 @@ public class OrderHistory extends JPanel {
             @Override
             public Component getTableCellRendererComponent(JTable t, Object v, boolean sel, boolean foc, int r, int c) {
                 JLabel base = (JLabel) super.getTableCellRendererComponent(t, v, sel, false, r, c);
-                return statusLabel(String.valueOf(v), sel ? t.getSelectionBackground() : Color.WHITE);
+                return statusLabel(String.valueOf(v), sel ? t.getSelectionBackground() : UiColors.SURFACE);
             }
         };
         JComboBox<String> statusBox = new JComboBox<>(OrderDAO.ORDER_STATUSES);
         statusBox.setFont(BOLD.deriveFont(13f));
-        statusBox.setBackground(Color.WHITE);
-        statusBox.setForeground(MAINORANGE);
+        statusBox.setBackground(UiColors.SURFACE);
+        statusBox.setForeground(UiColors.ORANGE);
         statusBox.setFocusable(false);
         statusBox.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 4));
         statusBox.setRenderer(new DefaultListCellRenderer() {
@@ -323,7 +324,7 @@ public class OrderHistory extends JPanel {
                 JLabel x = (JLabel) super.getListCellRendererComponent(l, v, i, sel, false);
                 x.setFont(BOLD.deriveFont(13f));
                 x.setForeground(statusColor(String.valueOf(v)));
-                x.setBackground(sel ? new Color(253, 235, 222) : Color.WHITE);
+                x.setBackground(sel ? UiColors.SELECTION : UiColors.SURFACE);
                 x.setBorder(BorderFactory.createEmptyBorder(6, 10, 6, 10));
                 return x;
             }
@@ -351,9 +352,9 @@ public class OrderHistory extends JPanel {
 
     private static Color statusColor(String status) {
         switch (status) {
-            case "Completed": return new Color(46, 125, 50);    // green
-            case "Served":    return new Color(21, 101, 192);   // blue
-            default:          return MAINORANGE;                // Preparing
+            case "Completed":
+            case "Served":    return UiColors.SUCCESS;
+            default:          return UiColors.ORANGE;             // Preparing
         }
     }
 
@@ -375,7 +376,7 @@ public class OrderHistory extends JPanel {
         l.setForeground(statusColor(status));
         l.setFont(BOLD.deriveFont(13f));
         l.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createMatteBorder(0, 0, 1, 0, ROW_LINE),
+            BorderFactory.createMatteBorder(0, 0, 1, 0, UiColors.BORDER_ROW),
             BorderFactory.createEmptyBorder(0, 16, 0, 8)));
         return l;
     }
@@ -402,9 +403,9 @@ public class OrderHistory extends JPanel {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(MAINWHITE);
+                g2.setColor(UiColors.BACKGROUND);
                 g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, radius, radius);
-                g2.setColor(MAINORANGE);
+                g2.setColor(UiColors.ORANGE);
                 g2.setStroke(new BasicStroke(2));
                 g2.drawRoundRect(1, 1, getWidth() - 3, getHeight() - 3, radius, radius);
                 g2.dispose();
@@ -426,7 +427,7 @@ public class OrderHistory extends JPanel {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(MAINORANGE);
+                g2.setColor(UiColors.ORANGE);
                 g2.setStroke(new BasicStroke(2.5f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                 int cy = getHeight() / 2;
                 g2.drawLine(6, cy, getWidth() - 6, cy);                 // shaft
@@ -448,10 +449,10 @@ public class OrderHistory extends JPanel {
         // title + meta
         JLabel title = new JLabel("Order #" + orderID);
         title.setFont(BOLD.deriveFont(17f));
-        title.setForeground(MAINORANGE);
+        title.setForeground(UiColors.ORANGE);
         JLabel meta = new JLabel("Loading...");
         meta.setFont(REGULAR.deriveFont(12f));
-        meta.setForeground(TEXT_GRAY);
+        meta.setForeground(UiColors.TEXT_MUTED);
         JPanel heading = new JPanel();
         heading.setOpaque(false);
         heading.setLayout(new BoxLayout(heading, BoxLayout.Y_AXIS));
@@ -469,18 +470,18 @@ public class OrderHistory extends JPanel {
         // items (receipt-like, scrolls when there are many)
         JPanel items = new JPanel();
         items.setLayout(new BoxLayout(items, BoxLayout.Y_AXIS));
-        items.setBackground(Color.WHITE);
+        items.setBackground(UiColors.SURFACE);
         items.setBorder(BorderFactory.createEmptyBorder(6, 14, 6, 14));
         JScrollPane scroll = new JScrollPane(items,
             ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        scroll.getViewport().setBackground(Color.WHITE);
-        scroll.setBorder(BorderFactory.createLineBorder(new Color(200, 200, 200)));
+        scroll.getViewport().setBackground(UiColors.SURFACE);
+        scroll.setBorder(BorderFactory.createLineBorder(UiColors.BORDER));
         scroll.getVerticalScrollBar().setUnitIncrement(16);
 
         // bottom: total bill
         JLabel totalLabel = new JLabel("Total bill  ₱0.00", SwingConstants.RIGHT);
         totalLabel.setFont(BOLD.deriveFont(18f));
-        totalLabel.setForeground(Color.BLACK);
+        totalLabel.setForeground(UiColors.BLACK);
 
         card.add(north, BorderLayout.NORTH);
         card.add(scroll, BorderLayout.CENTER);
@@ -530,9 +531,9 @@ public class OrderHistory extends JPanel {
         sub.setFont(BOLD.deriveFont(13f));
 
         JPanel row = new JPanel(new BorderLayout(8, 0));
-        row.setBackground(Color.WHITE);
+        row.setBackground(UiColors.SURFACE);
         row.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createMatteBorder(0, 0, 1, 0, ROW_LINE),
+            BorderFactory.createMatteBorder(0, 0, 1, 0, UiColors.BORDER_ROW),
             BorderFactory.createEmptyBorder(8, 0, 8, 0)));
         row.add(name, BorderLayout.CENTER);
         row.add(sub, BorderLayout.EAST);
@@ -548,8 +549,8 @@ public class OrderHistory extends JPanel {
         b.setBorderPainted(false);
         b.setOpaque(true);
         b.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        b.setBackground(selected ? MAINORANGE : MAINWHITE);
-        b.setForeground(selected ? MAINWHITE : MAINORANGE);
+        b.setBackground(selected ? UiColors.ORANGE : UiColors.BACKGROUND);
+        b.setForeground(selected ? UiColors.BACKGROUND : UiColors.ORANGE);
         b.addActionListener(e -> action.run());
         return b;
     }

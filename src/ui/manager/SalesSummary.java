@@ -13,6 +13,7 @@ import java.util.*;
 import java.util.List;
 import javax.swing.*;
 import javax.swing.table.*;
+import util.UiColors;
 
 /**
  * "Sales Summary" screen, laid out like a small dashboard:
@@ -166,12 +167,12 @@ public class SalesSummary extends JPanel {
 
     public SalesSummary() {
         setLayout(null);
-        setBackground(MAINWHITE);
+        setBackground(UiColors.BACKGROUND);
 
         // ---------------------------------------------------------------- header
         JLabel heading = new JLabel("SALES SUMMARY");
         heading.setFont(BOLD.deriveFont(33f));
-        heading.setForeground(MAINORANGE);
+        heading.setForeground(UiColors.ORANGE);
         heading.setBounds(33, 26, 600, 44);
         add(heading);
 
@@ -182,7 +183,7 @@ public class SalesSummary extends JPanel {
         add(subtitle);
 
         // ---------------------------------------------------------------- KPI cards
-        addKpi(33,  "Total Sales",         kpiSales,   "Paid transactions",    MAINORANGE);
+        addKpi(33,  "Total Sales",         kpiSales,   "Paid transactions",    UiColors.ORANGE);
         addKpi(273, "Total Orders",        kpiOrders,  "All orders",           Color.BLACK);
         addKpi(513, "Average Order Value", kpiAverage, "Per order",            Color.BLACK);
         addKpi(753, "Low-stock Items",     kpiLow,     "Below " + REORDER_LEVEL + " in stock", RED);
@@ -209,7 +210,7 @@ public class SalesSummary extends JPanel {
 
         // ---- right: the answer
         resultTitle.setFont(BOLD.deriveFont(15f));
-        resultTitle.setForeground(MAINORANGE);
+        resultTitle.setForeground(UiColors.ORANGE);
         resultTitle.setBounds(451, 244, 524, 24);
         add(resultTitle);
 
@@ -469,8 +470,8 @@ public class SalesSummary extends JPanel {
             public Component getTableCellRendererComponent(JTable t, Object v, boolean sel, boolean foc, int r, int c) {
                 JLabel headerLabel = (JLabel) super.getTableCellRendererComponent(t, v, false, false, r, c);
                 headerLabel.setFont(BOLD.deriveFont(12f));
-                headerLabel.setForeground(MAINWHITE);
-                headerLabel.setBackground(MAINORANGE);
+                headerLabel.setForeground(UiColors.BACKGROUND);
+                headerLabel.setBackground(UiColors.ORANGE);
                 headerLabel.setOpaque(true);
                 headerLabel.setHorizontalAlignment(SwingConstants.LEFT);
                 headerLabel.setBorder(BorderFactory.createEmptyBorder(0, 14, 0, 8));
@@ -522,14 +523,14 @@ public class SalesSummary extends JPanel {
             JPanel row = new JPanel(new BorderLayout(12, 0));
             row.setBackground(selected ? new Color(253, 235, 222) : Color.WHITE);
             row.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, selected ? 4 : 0, 1, 0, selected ? MAINORANGE : ROW_LINE),
+                BorderFactory.createMatteBorder(0, selected ? 4 : 0, 1, 0, selected ? UiColors.ORANGE : ROW_LINE),
                 BorderFactory.createEmptyBorder(0, selected ? 10 : 14, 0, 12)));
 
             JLabel number = new JLabel(String.valueOf(index + 1), SwingConstants.CENTER) {
                 @Override protected void paintComponent(Graphics g) {
                     Graphics2D graphics = (Graphics2D) g.create();
                     graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                    graphics.setColor(MAINORANGE);
+                    graphics.setColor(UiColors.ORANGE);
                     graphics.fillOval(0, 0, getWidth() - 1, getHeight() - 1);
                     graphics.dispose();
                     super.paintComponent(g);

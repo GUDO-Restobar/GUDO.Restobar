@@ -4,7 +4,13 @@ import java.awt.*;
 import javax.swing.*;
 import javax.swing.plaf.basic.BasicScrollBarUI;
 
-// Scroll bar drawn from two images: the frame (track) and the slider (thumb).
+/**
+ * Scroll bar drawn from two images: the frame (track) and the slider (thumb).
+ *
+ * Main purpose: reusable UI component - drop it on any JScrollPane with
+ * {@code bar.setUI(new KioskScrollBarUI(thumbPath, trackPath))} to give that
+ * scroll bar the kiosk's look. The arrow buttons are hidden.
+ */
 public class KioskScrollBarUI extends BasicScrollBarUI {
 
     private final Image thumbImage;

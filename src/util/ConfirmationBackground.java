@@ -4,12 +4,24 @@ import java.awt.*;
 import java.awt.geom.Path2D;
 import javax.swing.*;
 
+/**
+ * Base class for the full-screen confirmation pages (Order Added, Order
+ * Edited, Start Over).
+ *
+ * It supplies the off-white background with the two orange corner ribbons
+ * that every confirmation page is drawn on top of.
+ */
 public class ConfirmationBackground extends JPanel {
-    private static final Color ORANGE = new Color(236, 94, 2);
-    private static final Color OFF_WHITE = new Color(246, 246, 246);
+
+    /**
+     * How long a confirmation page stays on screen before the kiosk moves on
+     * by itself. OrderAdded and OrderEdited share this value so both feel
+     * identical to the customer.
+     */
+    public static final int AUTO_REDIRECT_MILLIS = 3000;
 
     public ConfirmationBackground() {
-        setBackground(OFF_WHITE);
+        setBackground(UiColors.BACKGROUND);
     }
 
     @Override
@@ -25,7 +37,7 @@ public class ConfirmationBackground extends JPanel {
         double w = getWidth();
         double h = getHeight();
 
-        g2.setColor(ORANGE);
+        g2.setColor(UiColors.ORANGE);
 
         // Top-left orange corner
         Path2D top = new Path2D.Double();
@@ -50,4 +62,3 @@ public class ConfirmationBackground extends JPanel {
         g2.dispose();
     }
 }
-

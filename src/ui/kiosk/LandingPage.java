@@ -1,89 +1,59 @@
 package ui.kiosk;
 
-import data.OrderDAO;
+// ============================================================
+// IMPORTS
+// ============================================================
 import java.awt.*;
-import java.sql.SQLException;
 import javax.swing.*;
 import util.*;
 
+/**
+ * The first screen of the kiosk: the fading banner, the logo and the
+ * Start Order button. Navigation is handled by the window (KioskMain)
+ * through the onStartOrder callback.
+ */
+public class LandingPage extends JPanel {
 
-public class LandingPage extends JFrame {
-    private static final String LANDING_SCREEN = "landing";
-    private static final String ORDER_OPTION_SCREEN = "order-option";
-    private static final String MENU_SCREEN = "menu_page";
-    private static final String ADD_ORDER_SCREEN = "add-order";
-    private static final String ORDER_ADDED_SCREEN = "order-added";
-    private static final String EDIT_ORDER_SCREEN = "edit-order";
-    private static final String ORDER_EDITED_SCREEN = "order-edited";
-    private static final String CHECKOUT_SCREEN = "checkout";
-    private static final String START_OVER_SCREEN = "start-over";
-    private static final String PAYMENT_OPTION_SCREEN = "payment-option";
-    private static final String RECEIPT_SCREEN = "receipt";
+    // ============================================================
+    // FRONTEND - logo, Start Order button and the page layout
+    // ============================================================
 
-    private final CardLayout cardLayout = new CardLayout();
-    private final JPanel screenPanel = new JPanel(cardLayout);
-    private final Cart cart = new Cart();
-    private MenuPage menuPage;
-    private AddOrder addOrderPage;
-    private OrderAdded orderAddedPage;
-    private EditOrder editOrderPage;
-    private OrderEdited orderEditedPage;
+    /** Called when the customer presses Start Order. */
+    private final Runnable onStartOrder;
 
-    public LandingPage() {
+    public LandingPage(Runnable onStartOrder) {
+        this.onStartOrder = onStartOrder;
+        setLayout(new BorderLayout());
+        setBackground(UiColors.BACKGROUND);
 
-        setTitle("Gudo Restobar");
-        setSize(580, 1040);
-        getContentPane().setBackground(new Color(246, 246, 246));
-        setLocationRelativeTo(null);
-        setResizable(false);
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        add(buildFadingBanner(), BorderLayout.NORTH);
+        add(buildLogo(), BorderLayout.CENTER);
+        add(buildStartArea(), BorderLayout.SOUTH);
+    }
 
-        JPanel landingPanel = new JPanel(new BorderLayout());
-        landingPanel.setBackground(new Color(246, 246, 246));
+    /** The GUDO word-mark, scaled to fit the middle of the page. */
+    private JLabel buildLogo() {
+        return new JLabel(UiKit.icon("public/assets/logo/logo-horizontal-transparent.png", 500, 121));
+    }
 
-        JLabel bannerLabel = new FadingBanner(
-            new String[] {
-                "public/assets/banners/landing-page-1.png",
-                "public/assets/banners/landing-page-2.png",
-                "public/assets/banners/landing-page-3.png",
-            }, 580, 676);
+    /** The big "Start Order" button, with its soft drop shadow. */
+    private JPanel buildStartArea() {
+        Font extraBold = UiKit.font("Inter/static/Inter_28pt-ExtraBold.ttf");
+        Font light = UiKit.font("Inter/static/Inter_18pt-Light.ttf");
 
-        ImageIcon LogoImage = new ImageIcon("public/assets/logo/logo-horizontal-transparent.png");
-        Image logoImage = LogoImage.getImage().getScaledInstance(500, 121, Image.SCALE_SMOOTH);
-        JLabel logoLabel = new JLabel(new ImageIcon(logoImage));
-
-        Font interExtraBold;
-        Font interLight;
-
-        try {
-            interExtraBold = FontLoader.loadFont(
-            "public/assets/fonts/Inter/static/Inter_28pt-ExtraBold.ttf"
-            );
-            interLight = FontLoader.loadFont(
-            "public/assets/fonts/Inter/static/Inter_18pt-Light.ttf"
-            );
-        } catch (java.io.IOException | FontFormatException e) {
-            throw new IllegalStateException("Could not load the button fonts.", e);
-        }
-
-        ImageIcon buttonIcon = new ImageIcon("public/assets/icons/touch.png");
-        Image scaledIcon = buttonIcon.getImage()
-            .getScaledInstance(96, 96, Image.SCALE_SMOOTH);
+        Image touchIcon = UiKit.icon("public/assets/icons/touch.png", 96, 96).getImage();
 
         JButton startBtn = new JButton(
             "<html><center>"
-                + "<font face='" + interExtraBold.getFontName() +"' size='7'>Start Order</font><br>"
-                + "<font face='" + interLight.getFontName() +"' size='5'>To unlock Gudo's Flavor</font>"
+                + "<font face='" + extraBold.getFontName() + "' size='7'>Start Order</font><br>"
+                + "<font face='" + light.getFontName() + "' size='5'>To unlock Gudo's Flavor</font>"
                 + "</center></html>",
-            new ImageIcon(scaledIcon)
+            new ImageIcon(touchIcon)
         ) {
             @Override
             protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(
-                    RenderingHints.KEY_ANTIALIASING,
-                    RenderingHints.VALUE_ANTIALIAS_ON
-                );
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
                 int shadowSize = 8;
                 int cornerRadius = 10;
@@ -91,43 +61,21 @@ public class LandingPage extends JFrame {
 
                 // Layered translucent shapes create a soft-shadow effect.
                 for (int offset = shadowSize; offset > 0; offset--) {
-                    int alpha = 4 + (shadowSize - offset) * 3;
-                    g2.setColor(new Color(0, 0, 0, alpha));
-                    g2.fillRoundRect(
-                        0, offset, getWidth(), buttonHeight,
-                        cornerRadius, cornerRadius
-                    );
+                    g2.setColor(UiColors.shadow(4 + (shadowSize - offset) * 3));
+                    g2.fillRoundRect(0, offset, getWidth(), buttonHeight, cornerRadius, cornerRadius);
                 }
 
+                // The face keeps the button's own colour so the hover state shows.
                 g2.setColor(getBackground());
-                g2.fillRoundRect(
-                    0, 0, getWidth(), buttonHeight,
-                    cornerRadius, cornerRadius
-                );
-
+                g2.fillRoundRect(0, 0, getWidth(), buttonHeight, cornerRadius, cornerRadius);
                 g2.dispose();
+
                 super.paintComponent(g);
             }
         };
 
-        Color buttonColor = new Color(236, 94, 2);
-        Color hoverColor = new Color(255, 120, 35);
-
-        startBtn.setBackground(buttonColor);
-        startBtn.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override
-            public void mouseEntered(java.awt.event.MouseEvent e) {
-                startBtn.setBackground(hoverColor);
-            }
-
-            @Override
-            public void mouseExited(java.awt.event.MouseEvent e) {
-                startBtn.setBackground(buttonColor);
-            }
-        });
-
-        startBtn.setForeground(new Color(246, 246, 246));
-
+        startBtn.setBackground(UiColors.ORANGE);
+        startBtn.setForeground(UiColors.BACKGROUND);
         startBtn.setPreferredSize(new Dimension(500, 140));
         startBtn.setIconTextGap(12);
         startBtn.setHorizontalTextPosition(SwingConstants.RIGHT);
@@ -136,206 +84,38 @@ public class LandingPage extends JFrame {
         startBtn.setContentAreaFilled(false);
         startBtn.setBorderPainted(false);
         startBtn.setFocusPainted(false);
-        startBtn.addActionListener(e -> showScreen(ORDER_OPTION_SCREEN));
+        startBtn.addActionListener(e -> startOrder());
+
+        // Hover feedback.
+        UiKit.hover(startBtn, UiColors.ORANGE, UiColors.ORANGE_HOVER);
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 0));
-        buttonPanel.setBackground(new Color(246, 246, 246));
+        buttonPanel.setBackground(UiColors.BACKGROUND);
         buttonPanel.setBorder(BorderFactory.createEmptyBorder(12, 12, 30, 12));
         buttonPanel.add(startBtn);
-
-        landingPanel.add(bannerLabel, BorderLayout.NORTH);
-        landingPanel.add(logoLabel, BorderLayout.CENTER);
-        landingPanel.add(buttonPanel, BorderLayout.SOUTH);
-
-        screenPanel.add(landingPanel, LANDING_SCREEN);
-        screenPanel.add(new OrderOption(), ORDER_OPTION_SCREEN);
-
-        menuPage = new MenuPage(
-            product -> showAddOrder(product, false),
-            () -> showScreen(CHECKOUT_SCREEN),
-            () -> showScreen(START_OVER_SCREEN)
-        );
-        screenPanel.add(menuPage, MENU_SCREEN);
-        // Pick up stock changes made in the database (e.g. by the manager) every time the menu is shown.
-        menuPage.addComponentListener(new java.awt.event.ComponentAdapter() {
-            @Override public void componentShown(java.awt.event.ComponentEvent e) {
-                reloadStock();
-                menuPage.refreshAvailability(cart);
-            }
-        });
-
-        // Any change to the cart (Menu, Add Order, Checkout, Edit Order) updates the Menu total.
-        // It also greys out any product whose stock is used up or fully in the cart.
-        cart.addChangeListener(() -> {
-            menuPage.setTotal(cart.getTotal());
-            menuPage.refreshAvailability(cart);
-        });
-        menuPage.refreshAvailability(cart); // products that start out of stock
-
-        screenPanel.add(new CheckoutPage(
-            cart,
-            () -> showScreen(MENU_SCREEN),
-            () -> showScreen(START_OVER_SCREEN),
-            () -> {
-                // Nothing to pay for if the order is empty.
-                if (!cart.getItems().isEmpty()) {
-                    showScreen(PAYMENT_OPTION_SCREEN);
-                }
-            },
-            this::showEditOrder
-        ), CHECKOUT_SCREEN);
-        screenPanel.add(new StartOver(
-            () -> {
-                cart.clear();
-                menuPage.setTotal(cart.getTotal());
-                showScreen(LANDING_SCREEN);
-            },
-            () -> showScreen(MENU_SCREEN)
-        ), START_OVER_SCREEN);
-
-        screenPanel.add(new PaymentOption(), PAYMENT_OPTION_SCREEN);
-
-        OrderReceipt receipt = new OrderReceipt();
-        screenPanel.add(receipt, RECEIPT_SCREEN);
-        // After the receipt is shown for a while, reset the kiosk for the next customer.
-        Timer receiptTimer = new Timer(10000, e -> {
-            cart.clear();
-            menuPage.setTotal(cart.getTotal());
-            showScreen(LANDING_SCREEN);
-        });
-        receiptTimer.setRepeats(false);
-        receipt.addComponentListener(new java.awt.event.ComponentAdapter() {
-            @Override public void componentShown(java.awt.event.ComponentEvent e) {
-                // The receipt only stays if the order was really saved to the database.
-                if (placeOrder(receipt)) {
-                    receiptTimer.restart();
-                }
-            }
-            @Override public void componentHidden(java.awt.event.ComponentEvent e) { receiptTimer.stop(); }
-        });
-        setContentPane(screenPanel);
-        showScreen(LANDING_SCREEN);
+        return buttonPanel;
     }
 
-    /**
-     * Saves the order (and reduces the stock) in MySQL.
-     * @return true if it was saved; false if the customer was sent back to Checkout
-     */
-    private boolean placeOrder(OrderReceipt receipt) {
-        try {
-            int orderID = OrderDAO.saveOrder(
-                cart, OrderSession.getOrderType(), OrderSession.getPaymentMethod());
-            OrderSession.setOrderID(orderID);
-            receipt.setOrderInfo(orderID, OrderSession.getOrderType(), OrderSession.getPaymentMethod());
-            reloadStock();
-            menuPage.refreshAvailability(cart);
-            return true;
-        } catch (OrderDAO.OutOfStockException e) {
-            orderFailed("Sorry, " + e.getItemName() + " just ran out of stock.\n"
-                + "Your order was adjusted to what is still available. Please check it again.");
-        } catch (SQLException e) {
-            e.printStackTrace();
-            orderFailed("Sorry, we couldn't save your order right now.\nPlease try again.");
-        }
-        return false;
+    // ============================================================
+    // FADING BANNER - the slideshow across the top of the page
+    // ============================================================
+
+    /** Cycles the three landing-page banners with a cross-fade between them. */
+    private JLabel buildFadingBanner() {
+        return new FadingBanner(
+            new String[] {
+                "public/assets/banners/landing-page-1.png",
+                "public/assets/banners/landing-page-2.png",
+                "public/assets/banners/landing-page-3.png",
+            }, 580, 676);
     }
 
-    private void orderFailed(String message) {
-        reloadStock();
-        cart.trimToStock();
-        menuPage.refreshAvailability(cart);
-        JOptionPane.showMessageDialog(this, message, "Order not placed", JOptionPane.WARNING_MESSAGE);
-        showScreen(CHECKOUT_SCREEN);
-    }
+    // ============================================================
+    // BACKEND - Start Order hands over to KioskMain
+    // ============================================================
 
-    /**
-     * Every page change goes through here. The kiosk does not update live: it picks up
-     * stock changes made in the database (by the manager or another kiosk) only when
-     * the customer moves to another page.
-     */
-    private void showScreen(String screen) {
-        if (!RECEIPT_SCREEN.equals(screen)        // the receipt saves the order itself
-                && !ADD_ORDER_SCREEN.equals(screen)   // these two pages were already
-                && !EDIT_ORDER_SCREEN.equals(screen)) { // built from freshly loaded stock
-            reloadStock();
-            if (CHECKOUT_SCREEN.equals(screen) || PAYMENT_OPTION_SCREEN.equals(screen)) {
-                cart.trimToStock(); // never let the customer pay for stock that is gone
-            }
-            menuPage.refreshAvailability(cart);
-        }
-        cardLayout.show(screenPanel, screen);
-    }
-
-    private void reloadStock() {
-        try {
-            Inventory.refresh();
-        } catch (SQLException e) {
-            e.printStackTrace(); // keep using the last known stock
-        }
-    }
-
-    private void showAddOrder(Product product, boolean editMode) {
-        reloadStock(); // the quantity limits are read from the stock when the page is built
-        if (addOrderPage != null) screenPanel.remove(addOrderPage);
-
-        addOrderPage = new AddOrder(
-            product,
-            cart,
-            editMode,
-            () -> {
-                menuPage.setTotal(cart.getTotal());
-                showOrderAdded(editMode);
-            },
-            () -> showScreen(editMode ? CHECKOUT_SCREEN : MENU_SCREEN)
-        );
-        screenPanel.add(addOrderPage, ADD_ORDER_SCREEN);
-        showScreen(ADD_ORDER_SCREEN);
-        screenPanel.revalidate();
-        screenPanel.repaint();
-    }
-
-    private void showOrderAdded(boolean edited) {
-        if (orderAddedPage != null) screenPanel.remove(orderAddedPage);
-
-        orderAddedPage = new OrderAdded(
-            cart.getTotal(),
-            edited,
-            () -> showScreen(MENU_SCREEN)
-        );
-        screenPanel.add(orderAddedPage, ORDER_ADDED_SCREEN);
-        showScreen(ORDER_ADDED_SCREEN);
-        screenPanel.revalidate();
-        screenPanel.repaint();
-    }
-
-    /** Opens the Edit Order page for a meal that is already in the order. */
-    private void showEditOrder(Product product) {
-        reloadStock();
-        if (editOrderPage != null) screenPanel.remove(editOrderPage);
-
-        editOrderPage = new EditOrder(
-            product,
-            cart,
-            this::showOrderEdited,
-            () -> showScreen(CHECKOUT_SCREEN)
-        );
-        screenPanel.add(editOrderPage, EDIT_ORDER_SCREEN);
-        showScreen(EDIT_ORDER_SCREEN);
-        screenPanel.revalidate();
-        screenPanel.repaint();
-    }
-
-    /** Shows "Your Cravings has Been Modified" for 2 seconds, then returns to Checkout. */
-    private void showOrderEdited() {
-        if (orderEditedPage != null) screenPanel.remove(orderEditedPage);
-
-        orderEditedPage = new OrderEdited(
-            cart.getTotal(),
-            () -> showScreen(CHECKOUT_SCREEN)
-        );
-        screenPanel.add(orderEditedPage, ORDER_EDITED_SCREEN);
-        showScreen(ORDER_EDITED_SCREEN);
-        screenPanel.revalidate();
-        screenPanel.repaint();
+    /** Runs when the customer presses Start Order; KioskMain shows OrderOption. */
+    private void startOrder() {
+        onStartOrder.run();
     }
 }
