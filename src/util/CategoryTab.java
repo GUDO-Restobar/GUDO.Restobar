@@ -50,12 +50,13 @@ public class CategoryTab extends JPanel {
         name.setBorder(BorderFactory.createEmptyBorder(0, 0, 14, 0));
         add(name, BorderLayout.SOUTH);
 
-        addMouseListener(new MouseAdapter(){
+        MouseAdapter tap = new MouseAdapter(){
             @Override
             public void mousePressed(MouseEvent e){
                 onClick.run();
             }
-        });
+        };
+        UiKit.listenEverywhere(this, tap);   // picture and caption included
     }
 
     /** Shows or removes the focused state (the width animates smoothly). */

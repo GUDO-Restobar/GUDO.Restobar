@@ -22,10 +22,15 @@ public class ItemCard extends JPanel {
     private static final int ARC = 14;          // rounded corners of the card
     private static final int SHADOW = 4;        // soft drop shadow below the card
     private static final int BORDER_ALPHA = 84; // 0.33 border weight (33% opacity)
+    /** Size of the product picture; smaller than its slot so every picture
+     *  keeps a margin from the card's edges (the drink shots in particular
+     *  are tall and would otherwise touch the top edge). */
+    private static final int PICTURE_SIZE = 112;
     private static final String UNAVAILABLE_TEXT = "UNAVAILABLE";
 
     private final Product product;
     private final Font font;
+    private final Consumer<Product> onSelect;
     private PictureLabel picture;
     private boolean available = true;
 
@@ -35,9 +40,20 @@ public class ItemCard extends JPanel {
     /** One picture of the whole card, used instead of a live repaint while fading. */
     private BufferedImage snapshot;
 
+    /** Fires the product's action; shared by the card and everything inside it. */
+    private final MouseAdapter tap = new MouseAdapter() {
+        @Override
+        public void mousePressed(MouseEvent e) {
+            if (available && onSelect != null) {
+                onSelect.accept(product);
+            }
+        }
+    };
+
     public ItemCard(Product product, Font font, Consumer<Product> onSelect) {
         this.product = product;
         this.font = font;
+        this.onSelect = onSelect;
         setLayout(new BorderLayout());
         setOpaque(false);                       // painted in paintComponent instead
         setBorder(BorderFactory.createEmptyBorder(1, 1, 1 + SHADOW, 1));
@@ -48,14 +64,7 @@ public class ItemCard extends JPanel {
         add(picture, BorderLayout.CENTER);
         add(createTextArea(product, font), BorderLayout.SOUTH);
 
-        addMouseListener(new MouseAdapter() {
-            @Override
-            public void mousePressed(MouseEvent e) {
-                if (available && onSelect != null) {
-                    onSelect.accept(product);
-                }
-            }
-        });
+        UiKit.listenEverywhere(this, tap);   // picture, name and price included
     }
 
     /** The rounded card: white fill, a soft 0.33-weight outline and a drop shadow. */
@@ -78,7 +87,7 @@ public class ItemCard extends JPanel {
     }
 
     private PictureLabel createPicture(Product product) {
-        return new PictureLabel(UiKit.icon(product.getImagePath(), 130, 130));
+        return new PictureLabel(UiKit.icon(product.getImagePath(), PICTURE_SIZE, PICTURE_SIZE));
     }
 
     /** Sets the opacity and repaints (used by the menu's entrance fade). */

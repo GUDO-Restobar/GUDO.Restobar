@@ -2,6 +2,8 @@ package util;
 
 import java.awt.AlphaComposite;
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -9,6 +11,7 @@ import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 import java.util.HashMap;
 import java.util.Map;
@@ -90,6 +93,22 @@ public final class UiKit {
             @Override public void mouseEntered(MouseEvent e) { button.setBackground(hoverColor); }
             @Override public void mouseExited(MouseEvent e) { button.setBackground(base); }
         });
+    }
+
+    /**
+     * Adds the listener to a component and to every component inside it.
+     *
+     * A press goes to the deepest component under the mouse, and Swing does
+     * not pass it on to the parent. Without this a card whose picture, name
+     * or price is a child label would ignore taps on exactly those parts.
+     */
+    public static void listenEverywhere(Component component, MouseListener listener) {
+        component.addMouseListener(listener);
+        if (component instanceof Container) {
+            for (Component child : ((Container) component).getComponents()) {
+                listenEverywhere(child, listener);
+            }
+        }
     }
 
     /**
