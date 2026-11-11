@@ -80,7 +80,7 @@ public class KioskMain extends JFrame {
     /** Creates every page once and drops it into the CardLayout stack. */
     private void buildScreens() {
 
-        // --- Intro video: plays first and on every loop back to the start ---
+        // --- Intro video: plays first and again when the receipt resets the kiosk ---
         screenPanel.add(introPanel, INTRO_SCREEN);
 
         // --- Entry point: the landing banner ---
@@ -89,7 +89,7 @@ public class KioskMain extends JFrame {
         // --- Order type: Dine-in or Takeout ---
         screenPanel.add(new OrderOption(
             () -> showScreen(MENU_SCREEN),       // a choice was made
-            () -> showScreen(LANDING_SCREEN)     // back
+            this::showLanding                    // back: fade straight into the landing page
         ), ORDER_OPTION_SCREEN);
 
         // --- Menu: the hub every other order page returns to ---
@@ -136,7 +136,7 @@ public class KioskMain extends JFrame {
             () -> {                               // Yes: throw the order away
                 cart.clear();
                 menuPage.setTotal(cart.getTotal());
-                showIntro();
+                showLanding();                    // straight back, skipping the intro video
             },
             () -> showScreen(previousScreen)      // No: back to the previous page
         ), START_OVER_SCREEN);
@@ -173,8 +173,9 @@ public class KioskMain extends JFrame {
 
     /**
      * Plays the intro video inside the kiosk window, then lands on the start
-     * page. Every loop back to the beginning (receipt reset, Start Over)
-     * goes through here.
+     * page. The receipt reset goes through here; going back from the order
+     * type page and confirming Start Over skip the video and use
+     * {@link #showLanding()} directly.
      */
     private void showIntro() {
         currentScreen = INTRO_SCREEN;
