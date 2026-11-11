@@ -41,5 +41,5 @@ if errorlevel 1 (
 )
 
 echo Starting the kiosk...
-java --module-path "%FXLIB%" --add-modules %FXMODS% -cp "bin;%JARS%" KioskMain
+java --module-path "%FXLIB%" --add-modules %FXMODS% --enable-native-access=javafx.graphics,javafx.media -cp "bin;%JARS%" KioskMain
 pause

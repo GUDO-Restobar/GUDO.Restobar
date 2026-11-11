@@ -183,29 +183,45 @@ public class KioskMain extends JFrame {
         introPanel.play(this::showLanding);
     }
 
-    /** The landing page's entrance: show it, then fade the window in smoothly. */
+    /** The landing page's entrance: show it, then fade it in smoothly. */
     private void showLanding() {
         showScreen(LANDING_SCREEN);
         fadeIn();
     }
 
-    /** Fades the window in from invisible to fully visible over ~600 ms. */
+    /**
+     * Fades the landing page in: a solid UiColors.BACKGROUND cover sits on
+     * top of the window and turns transparent over ~600 ms, so the page
+     * appears smoothly instead of popping in. (Window.setOpacity does not
+     * work on a decorated window, so the cover is painted instead.)
+     */
     private void fadeIn() {
-        try {
-            setOpacity(0f);
-            Timer fadeTimer = new Timer(15, null);          // 40 steps x 15 ms
-            final int[] step = {0};
-            fadeTimer.addActionListener(e -> {
-                step[0]++;
-                setOpacity(Math.min(1f, step[0] / 40f));
-                if (step[0] >= 40) {
-                    fadeTimer.stop();
-                }
-            });
-            fadeTimer.start();
-        } catch (RuntimeException unsupported) {
-            // This platform can't fade windows: the page is already visible.
-        }
+        final float[] alpha = {1f};                       // cover opacity, 1 -> 0
+        JComponent cover = new JComponent() {
+            @Override protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha[0]));
+                g2.setColor(UiColors.BACKGROUND);
+                g2.fillRect(0, 0, getWidth(), getHeight());
+                g2.dispose();
+            }
+        };
+        cover.setOpaque(false);
+        getRootPane().setGlassPane(cover);                // top-most, blocks clicks while fading
+        cover.setVisible(true);
+
+        Timer fadeTimer = new Timer(15, null);             // 40 steps x 15 ms = 600 ms
+        final int[] step = {0};
+        fadeTimer.addActionListener(e -> {
+            step[0]++;
+            alpha[0] = 1f - step[0] / 40f;
+            cover.repaint();
+            if (step[0] >= 40) {
+                fadeTimer.stop();
+                cover.setVisible(false);
+            }
+        });
+        fadeTimer.start();
     }
 
     /**

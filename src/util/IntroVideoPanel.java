@@ -2,8 +2,6 @@ package util;
 
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import javafx.application.Platform;
 import javafx.embed.swing.JFXPanel;
 import javafx.scene.Group;
@@ -16,9 +14,11 @@ import javax.swing.SwingUtilities;
 /**
  * The intro video (JavaFX embedded in Swing through JFXPanel).
  *
- * Purpose: plays intro.mp4 inside the kiosk window when the app starts and
- * every time the flow loops back to the beginning. A click or touch anywhere
- * skips it. KioskMain decides where to go next via play(Runnable onFinished).
+ * Purpose: plays intro.mp4 (from the project's public/assets/animations
+ * folder) inside the kiosk window when the app starts and every time the
+ * flow loops back to the beginning. The video always runs to the end;
+ * pressing the window or screen does NOT skip it. KioskMain decides where
+ * to go next via play(Runnable onFinished).
  *
  * The panel is created once by KioskMain and replayed; the MediaPlayer is
  * created fresh for each playback and disposed afterwards, so looping
@@ -37,18 +37,11 @@ public class IntroVideoPanel extends JFXPanel {
     public IntroVideoPanel() {
         setBackground(UiColors.BACKGROUND);
         Platform.setImplicitExit(false);   // keep the FX engine alive across replays
-
-        // One click / touch anywhere skips the video
-        addMouseListener(new MouseAdapter() {
-            @Override public void mousePressed(MouseEvent e) {
-                finish();
-            }
-        });
     }
 
     /**
      * Plays intro.mp4 and calls {@code onFinished} on the Swing thread when
-     * the video ends OR is skipped.
+     * the video ends (or cannot be played).
      */
     public void play(Runnable onFinished) {
         this.onFinished = onFinished;
@@ -56,7 +49,7 @@ public class IntroVideoPanel extends JFXPanel {
 
         final String mediaUrl = findVideo();
         if (mediaUrl == null) {
-            finish();   // no video found anywhere: skip instead of hanging on black
+            finish();   // no video found: continue instead of hanging on the background
             return;
         }
 
@@ -69,7 +62,7 @@ public class IntroVideoPanel extends JFXPanel {
             addComponentListener(new ComponentAdapter() {
                 @Override public void componentResized(ComponentEvent e) {
                     removeComponentListener(this);
-                    if (onFinished != null) {   // still wanted (not skipped meanwhile)
+                    if (onFinished != null) {
                         startVideo(mediaUrl);
                     }
                 }
@@ -89,12 +82,9 @@ public class IntroVideoPanel extends JFXPanel {
             player.setOnError(this::finish);   // if it can't play, continue anyway
 
             MediaView view = new MediaView(player);
-            Scene videoScene = new Scene(new Group(view), width, height,
-                FX_BACKGROUND);
-            // The video stretches to the scene, and the scene was sized to
-            // this panel - so the video fills the window.
-            view.fitWidthProperty().bind(videoScene.widthProperty());
-            view.fitHeightProperty().bind(videoScene.heightProperty());
+            view.setFitWidth(width);           // the video stretches to
+            view.setFitHeight(height);         // fill the whole window
+            Scene videoScene = new Scene(new Group(view), width, height, FX_BACKGROUND);
             setScene(videoScene);
             player.play();
         });
@@ -117,10 +107,10 @@ public class IntroVideoPanel extends JFXPanel {
         });
     }
 
-    /** Single exit point: video finished or clicked. Always returns to Swing. */
+    /** Single exit point: the video ended or failed. Always returns to Swing. */
     private void finish() {
         Runnable done = onFinished;
-        onFinished = null;          // a second click can't fire the callback twice
+        onFinished = null;          // can only fire once per playback
         stop();
         if (done != null) {
             SwingUtilities.invokeLater(done);   // back to the Swing thread
@@ -128,29 +118,17 @@ public class IntroVideoPanel extends JFXPanel {
     }
 
     // -------------------------------------------------------------
-    // Video lookup (class path first, project files as a safety net)
+    // Video lookup: the project's public/assets/animations folder
     // -------------------------------------------------------------
 
     /**
-     * Finds intro.mp4: classpath resource first (not an absolute path),
-     * then the project-relative file, in case the IDE didn't copy the
-     * video into the output folder.
+     * Finds intro.mp4 in the project's public/assets/animations folder.
+     * A project-relative path, never a hardcoded absolute one.
      */
     private static String findVideo() {
-        String[] resources = {
-            "/intro.mp4",                            // copied next to the classes
-            "/public/assets/animations/intro.mp4"    // project root on the classpath
-        };
-        for (String resource : resources) {
-            java.net.URL url = IntroVideoPanel.class.getResource(resource);
-            if (url != null) {
-                return url.toExternalForm();
-            }
-        }
-
         String[] files = {
-            "public/assets/animations/intro.mp4",                  // run from the project folder
-            "GUDO.Restobar/public/assets/animations/intro.mp4"     // run from the parent folder
+            "public/assets/animations/intro.mp4",                 // run from the project folder
+            "GUDO.Restobar/public/assets/animations/intro.mp4"    // run from the parent folder
         };
         for (String file : files) {
             java.io.File f = new java.io.File(file);
