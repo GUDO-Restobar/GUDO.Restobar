@@ -3,6 +3,7 @@ package util;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
 import java.util.function.Consumer;
 import javax.swing.*;
 
@@ -18,6 +19,9 @@ public class ItemCard extends JPanel {
 
     private static final int WIDTH = 188;
     private static final int HEIGHT = 221;
+    private static final int ARC = 14;          // rounded corners of the card
+    private static final int SHADOW = 4;        // soft drop shadow below the card
+    private static final int BORDER_ALPHA = 84; // 0.33 border weight (33% opacity)
     private static final String UNAVAILABLE_TEXT = "UNAVAILABLE";
 
     private final Product product;
@@ -25,12 +29,18 @@ public class ItemCard extends JPanel {
     private PictureLabel picture;
     private boolean available = true;
 
+    /** 0 = invisible, 1 = fully visible (the menu's entrance fade). */
+    private float fade = 1f;
+
+    /** One picture of the whole card, used instead of a live repaint while fading. */
+    private BufferedImage snapshot;
+
     public ItemCard(Product product, Font font, Consumer<Product> onSelect) {
         this.product = product;
         this.font = font;
         setLayout(new BorderLayout());
-        setBackground(UiColors.BACKGROUND);
-        setBorder(BorderFactory.createLineBorder(UiColors.BORDER));
+        setOpaque(false);                       // painted in paintComponent instead
+        setBorder(BorderFactory.createEmptyBorder(1, 1, 1 + SHADOW, 1));
         setPreferredSize(new Dimension(WIDTH, HEIGHT));
         setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 
@@ -48,10 +58,79 @@ public class ItemCard extends JPanel {
         });
     }
 
+    /** The rounded card: white fill, a soft 0.33-weight outline and a drop shadow. */
+    @Override
+    protected void paintComponent(Graphics g) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        int h = getHeight() - SHADOW;
+        for (int i = SHADOW; i > 0; i--) {
+            g2.setColor(UiColors.shadow(4 + (SHADOW - i) * 4));
+            g2.fillRoundRect(0, i, getWidth(), h, ARC, ARC);
+        }
+        g2.setColor(UiColors.BACKGROUND);
+        g2.fillRoundRect(0, 0, getWidth(), h, ARC, ARC);
+        g2.setColor(UiColors.overlay(UiColors.BROWN, BORDER_ALPHA));   // 0.33 border weight
+        g2.drawRoundRect(0, 0, getWidth() - 1, h - 1, ARC, ARC);
+
+        g2.dispose();
+    }
+
     private PictureLabel createPicture(Product product) {
-        ImageIcon icon = new ImageIcon(product.getImagePath());
-        Image scaled = icon.getImage().getScaledInstance(130, 130, Image.SCALE_SMOOTH);
-        return new PictureLabel(new ImageIcon(scaled));
+        return new PictureLabel(UiKit.icon(product.getImagePath(), 130, 130));
+    }
+
+    /** Sets the opacity and repaints (used by the menu's entrance fade). */
+    public void setFade(float fade) {
+        fade = Math.max(0f, Math.min(1f, fade));
+        if (fade == this.fade
+                || (fade != 0f && fade != 1f && Math.abs(this.fade - fade) < 0.01f)) {
+            return;                        // nothing visible would change
+        }
+        if (fade == 0f) {
+            snapshot = null;               // a new fade starts: re-render the card once
+        }
+        this.fade = fade;
+        repaint();
+    }
+
+    /**
+     * While the card fades it is drawn from one picture of itself instead of
+     * packing every child again on each frame - a 60 fps fade then costs a
+     * single image copy per card instead of a full repaint.
+     */
+    @Override
+    public void paint(Graphics g) {
+        if (fade >= 1f) {
+            snapshot = null;       // fully visible again: paint live
+            super.paint(g);
+            return;
+        }
+        Graphics2D g2 = UiKit.translucent(g, fade);
+        if (g2 == null || getWidth() <= 0 || getHeight() <= 0) {
+            super.paint(g);
+            return;
+        }
+        if (snapshot == null || snapshot.getWidth() != getWidth()
+                || snapshot.getHeight() != getHeight()) {
+            snapshot = renderPicture();
+        }
+        g2.drawImage(snapshot, 0, 0, null);
+        g2.dispose();
+    }
+
+    /** Paints the card at full opacity into its own picture. */
+    private BufferedImage renderPicture() {
+        BufferedImage picture = new BufferedImage(getWidth(), getHeight(),
+            BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2 = picture.createGraphics();
+        float keep = fade;
+        fade = 1f;                 // so super.paint draws it normally
+        super.paint(g2);
+        fade = keep;
+        g2.dispose();
+        return picture;
     }
 
     /** Greys the card out and shows the red UNAVAILABLE text when the product can't be ordered. */
@@ -102,7 +181,7 @@ public class ItemCard extends JPanel {
         JPanel text = new JPanel(new BorderLayout(0, 4));
         text.setOpaque(false);
         text.setBorder(BorderFactory.createEmptyBorder(4, 10, 10, 10));
-        text.setPreferredSize(new Dimension(WIDTH, 92));
+        text.setPreferredSize(new Dimension(WIDTH, 92 - SHADOW));
 
         JTextArea name = new JTextArea(product.getName());
         name.setFont(font.deriveFont(15f));
