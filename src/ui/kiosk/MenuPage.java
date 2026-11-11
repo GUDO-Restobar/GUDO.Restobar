@@ -4,6 +4,7 @@ package ui.kiosk;
 // IMPORTS
 // ============================================================
 import java.awt.*;
+import java.awt.event.HierarchyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.sql.SQLException;
@@ -50,13 +51,40 @@ public class MenuPage extends JPanel {
     private final Runnable onStartOver;
 
     private final JPanel[] sections = new JPanel[CATEGORY_NAMES.length];
+    private final CategoryTab[] tabs = new CategoryTab[CATEGORY_NAMES.length];
     private final List<ItemCard> itemCards = new ArrayList<>();
 
     /** The menu from the MENU_ITEM table, grouped by category. */
     private final Map<String, List<Product>> menu = loadMenu();
 
     private JScrollPane scrollPane;
-    private JLabel totalLabel;
+    private FadeLabel totalLabel;
+    /** The scroll bar's UI, faded in at the end of the entrance animation. */
+    private KioskScrollBarUI scrollBarUI;
+
+    /** Runs the fade-in that plays every time the page is shown. */
+    private Timer introTimer;
+    /** True between being shown and the first frame that is really painted. */
+    private boolean introArmed;
+    /** How much of the entrance timeline has actually been shown, in ms. */
+    private int introElapsed;
+
+    /** Drives the smooth mouse-wheel scrolling. */
+    private Timer scrollTimer;
+    /** Where the list is currently scrolling to. */
+    private int scrollTarget;
+
+    /** Font size of the running total; it shrinks for very large amounts. */
+    private static final float TOTAL_FONT_SIZE = 26f;
+    /** The width the total may use, leaving a gap before the checkout button. */
+    private static final int TOTAL_MAX_WIDTH = 185;
+
+    /** Entrance fade: each element fades for FADE_MILLIS, cards start every CARD_STAGGER. */
+    private static final int FADE_MILLIS = 200;
+    /** The furthest one frame may advance the fade, so a stalled UI cannot skip it. */
+    private static final int MAX_FRAME_STEP = 40;
+    private static final int CARDS_START = 100;
+    private static final int CARD_STAGGER = 30;
 
     public MenuPage(Consumer<Product> onProductSelected, Runnable onCheckout, Runnable onStartOver) {
         this.onProductSelected = onProductSelected != null ? onProductSelected : product -> {};
@@ -71,6 +99,26 @@ public class MenuPage extends JPanel {
         SwingUtilities.invokeLater(() ->
             scrollPane.getViewport().setViewPosition(new Point(0, 0))
         );
+
+        // Replays the entrance fade every time the page really becomes visible
+        // (CardLayout switches, window shown) and refreshes the focused category.
+        addHierarchyListener(e -> {
+            if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) == 0) {
+                return;
+            }
+            if (isShowing()) {
+                updateActiveCategory();
+                playIntro();
+            } else {
+                introArmed = false;         // the next visit starts from the beginning
+                if (introTimer != null) {
+                    introTimer.stop();
+                }
+                resetIntro();
+            }
+        });
+
+        resetIntro();               // nothing animated is visible before the first show
     }
 
     /** Banner on top, the product list in the middle, the total bar at the bottom. */
@@ -91,7 +139,8 @@ public class MenuPage extends JPanel {
         JPanel logo = new JPanel();
         logo.setOpaque(false);
         logo.setPreferredSize(new Dimension(130, 150));
-        logo.add(new JLabel(UiKit.icon("public\\assets\\logo\\logo-circle.png", 128, 128)));
+        logo.setBorder(BorderFactory.createEmptyBorder(14, 15, 10, 15));   // margin from the orange rail
+        logo.add(new JLabel(UiKit.icon("public\\assets\\logo\\logo-circle.png", 100, 100)));
         sidebar.add(logo, BorderLayout.NORTH);
 
         JPanel tabs = new JPanel();
@@ -105,6 +154,7 @@ public class MenuPage extends JPanel {
             tab.setAlignmentX(Component.CENTER_ALIGNMENT);
             tabs.add(Box.createVerticalStrut(18));
             tabs.add(tab);
+            this.tabs[i] = tab;
         }
         sidebar.add(tabs, BorderLayout.CENTER);
         return sidebar;
@@ -146,11 +196,189 @@ public class MenuPage extends JPanel {
 
         JScrollBar bar = scrollPane.getVerticalScrollBar();
         bar.setUnitIncrement(24);
-        bar.setUI(new KioskScrollBarUI(THUMB, TRACK));
+        scrollBarUI = new KioskScrollBarUI(THUMB, TRACK);
+        bar.setUI(scrollBarUI);
         bar.setPreferredSize(new Dimension(26, 0));
         bar.setBorder(BorderFactory.createEmptyBorder(6, 2, 6, 8));
         bar.setBackground(UiColors.SURFACE);
+
+        // Keep the sidebar in step with whatever section is being looked at.
+        scrollPane.getViewport().addChangeListener(e -> updateActiveCategory());
+        enableSmoothScrolling();
         return scrollPane;
+    }
+
+    /** Highlights the category tab of the section currently at the top of the list. */
+    private void updateActiveCategory() {
+        int viewY = scrollPane.getViewport().getViewPosition().y;
+        int active = 0;
+        for (int i = 0; i < sections.length; i++) {
+            if (sections[i] != null && sections[i].getY() <= viewY + 10) {
+                active = i;
+            }
+        }
+        for (int i = 0; i < tabs.length; i++) {
+            if (tabs[i] != null) {
+                tabs[i].setActive(i == active);
+            }
+        }
+    }
+
+    /**
+     * Replaces the default jumpy wheel scrolling with a short glide:
+     * the list eases toward the target position at ~30 frames per second.
+     */
+    private void enableSmoothScrolling() {
+        JScrollBar bar = scrollPane.getVerticalScrollBar();
+        scrollPane.setWheelScrollingEnabled(false);
+
+        scrollPane.addMouseWheelListener(e -> {
+            int max = bar.getMaximum() - bar.getVisibleAmount();
+            int step = e.getWheelRotation() * bar.getUnitIncrement() * 3;
+            scrollTarget = Math.max(0, Math.min(max, scrollTarget + step));
+
+            if (scrollTimer == null) {
+                scrollTimer = new Timer(16, t -> {          // ~60 frames per second
+                    int value = bar.getValue();
+                    int next = value + (int) Math.round((scrollTarget - value) * 0.16);
+                    if (Math.abs(scrollTarget - next) <= 1) {
+                        next = scrollTarget;
+                        scrollTimer.stop();
+                    }
+                    bar.setValue(next);
+                });
+            }
+            if (!scrollTimer.isRunning()) {
+                scrollTimer.start();
+            }
+        });
+
+        // Dragging the scrollbar thumb takes over from the glide.
+        bar.addAdjustmentListener(e -> {
+            if (e.getValueIsAdjusting()) {
+                if (scrollTimer != null) {
+                    scrollTimer.stop();
+                }
+                scrollTarget = bar.getValue();
+            } else if (scrollTimer == null || !scrollTimer.isRunning()) {
+                scrollTarget = bar.getValue();
+            }
+        });
+    }
+
+    // ------------------------------------------------------------
+    // Entrance animation
+    // ------------------------------------------------------------
+
+    /**
+     * Fades the page in every time it is shown, in order: category tabs,
+     * product cards from the top down, the scroll bar, then the running
+     * total (its bag icon and amount together).
+     *
+     * Everything else - banner, headings, logo, Start Over, Proceed - is
+     * visible immediately.
+     *
+     * The clock starts on the first painted frame (see {@link #paint}), not
+     * here: opening the page also reloads stock from the database, and a slow
+     * query would otherwise let the whole animation elapse before the page is
+     * ever drawn - making it appear in one jump.
+     */
+    private void playIntro() {
+        if (introTimer != null) {
+            introTimer.stop();
+        }
+        resetIntro();                  // nothing animated is visible yet
+        introArmed = true;
+        repaint();
+    }
+
+    /** Starts the timeline once the page is really on screen. */
+    private void startIntro() {
+        int rows = (itemCards.size() + 1) / 2;
+        int cardsEnd = CARDS_START + Math.max(0, rows - 1) * CARD_STAGGER + FADE_MILLIS;
+        int scrollStart = cardsEnd + 20;
+        int totalStart = scrollStart + FADE_MILLIS + 20;
+        int end = totalStart + FADE_MILLIS;
+
+        introElapsed = 0;
+        // System.nanoTime, because currentTimeMillis only ticks every ~16 ms
+        // on Windows - too coarse for a smooth timeline.
+        final long[] lastTick = {System.nanoTime()};
+
+        // 12 ms, not 16: Windows rounds a 16 ms Swing timer up to two ~15.6 ms
+        // system ticks, which halves the frame rate.
+        introTimer = new Timer(12, e -> {
+            long now = System.nanoTime();
+            int delta = (int) ((now - lastTick[0]) / 1_000_000);
+            lastTick[0] = now;
+            // A stalled event queue (stock reload, garbage collection) may take
+            // far longer than a frame; never let that jump skip the fade.
+            introElapsed += Math.min(delta, MAX_FRAME_STEP);
+            applyIntroFrame(introElapsed, scrollStart, totalStart);
+            if (introElapsed >= end) {
+                ((Timer) e.getSource()).stop();
+            }
+        });
+        introTimer.start();
+    }
+
+    @Override
+    public void paint(Graphics g) {
+        if (introArmed) {
+            introArmed = false;
+            startIntro();
+        }
+        super.paint(g);
+    }
+
+    /** Hides every animated element, so the next visit starts at zero. */
+    private void resetIntro() {
+        for (CategoryTab tab : tabs) {
+            if (tab != null) {
+                tab.setFade(0f);
+            }
+        }
+        for (ItemCard card : itemCards) {
+            card.setFade(0f);
+        }
+        if (scrollBarUI != null) {
+            scrollBarUI.setFade(0f);
+        }
+        totalLabel.setFade(0f);
+    }
+
+    /** Puts one frame of the entrance animation on screen. */
+    private void applyIntroFrame(int elapsed, int scrollStart, int totalStart) {
+        float tabsFade = fade(elapsed, 0, FADE_MILLIS);
+        for (CategoryTab tab : tabs) {
+            if (tab != null) {
+                tab.setFade(tabsFade);
+            }
+        }
+
+        for (int i = 0; i < itemCards.size(); i++) {
+            int rowStart = CARDS_START + (i / 2) * CARD_STAGGER;   // two cards per row
+            itemCards.get(i).setFade(fade(elapsed, rowStart, FADE_MILLIS));
+        }
+
+        if (scrollBarUI != null) {
+            scrollBarUI.setFade(fade(elapsed, scrollStart, FADE_MILLIS));
+        }
+
+        // One label holds both the bag icon and the amount, so the pair fades as a unit.
+        totalLabel.setFade(fade(elapsed, totalStart, FADE_MILLIS));
+    }
+
+    /** Eased 0..1 progress of a fade that begins at {@code start}. */
+    private static float fade(int elapsed, int start, int duration) {
+        float p = (elapsed - start) / (float) duration;
+        if (p <= 0f) {
+            return 0f;
+        }
+        if (p >= 1f) {
+            return 1f;
+        }
+        return p * p * (3f - 2f * p);       // smoothstep: gentle start and end
     }
 
     /** One category: a heading plus a two-column grid of product cards. */
@@ -193,15 +421,19 @@ public class MenuPage extends JPanel {
         JPanel area = new JPanel();
         area.setLayout(new BoxLayout(area, BoxLayout.Y_AXIS));
         area.setOpaque(false);
+        // A fixed slot: however long the amount gets, the total can never grow
+        // over the checkout button on the right.
+        area.setPreferredSize(new Dimension(TOTAL_MAX_WIDTH, 134));
 
-        totalLabel = new JLabel("\u20B10.00", UiKit.icon(BAG, 56, 56), SwingConstants.LEFT);
-        totalLabel.setFont(bold.deriveFont(26f));
+        totalLabel = new FadeLabel("\u20B10.00", UiKit.icon(BAG, 56, 56), SwingConstants.LEFT);
+        totalLabel.setFont(bold.deriveFont(TOTAL_FONT_SIZE));
         totalLabel.setForeground(UiColors.ORANGE_DARK);
         totalLabel.setIconTextGap(14);
         totalLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         KioskButton reset = new KioskButton("Start Over", null,
-            UiColors.BACKGROUND, UiColors.HOVER_GREY_SOFT, 4, UiColors.BORDER);
+            UiColors.BACKGROUND, UiColors.HOVER_GREY_SOFT, 4,
+            UiColors.overlay(UiColors.BORDER, 84));    // 0.33 border weight
         reset.setFont(bold.deriveFont(12f));
         reset.setForeground(UiColors.BROWN);
         reset.setPreferredSize(new Dimension(178, 34));
@@ -228,9 +460,11 @@ public class MenuPage extends JPanel {
         button.setPreferredSize(new Dimension(207, 94));
         button.addActionListener(e -> goToCheckout());
 
-        JPanel wrapper = new JPanel(new GridBagLayout());
+        JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.setOpaque(false);
-        wrapper.add(button);
+        // Bottom edges of the two buttons line up (13 px clears the drop shadow).
+        wrapper.setBorder(BorderFactory.createEmptyBorder(0, 0, 13, 0));
+        wrapper.add(button, BorderLayout.SOUTH);
         return wrapper;
     }
 
@@ -266,7 +500,7 @@ public class MenuPage extends JPanel {
 
             int h = getHeight() - shadow;
             for (int i = shadow; i > 0; i--) {
-                g2.setColor(UiColors.shadow(4 + (shadow - i) * 3));
+                g2.setColor(UiColors.shadow(6 + (shadow - i) * 4));
                 g2.fillRoundRect(0, i, getWidth(), h, 10, 10);
             }
             g2.setColor(getBackground());
@@ -313,6 +547,24 @@ public class MenuPage extends JPanel {
     /** Keeps the bottom-bar total in step with the cart. Called by KioskMain. */
     public void setTotal(double total) {
         totalLabel.setText("\u20B1" + String.format("%.2f", total));
+        fitTotalFont();
+    }
+
+    /**
+     * Shrinks the total's font when the amount is very large, so the running
+     * total always stays inside its area and never runs under the checkout
+     * button.
+     */
+    private void fitTotalFont() {
+        int available = TOTAL_MAX_WIDTH
+            - totalLabel.getIcon().getIconWidth() - totalLabel.getIconTextGap() - 4;
+        FontMetrics fm = totalLabel.getFontMetrics(bold.deriveFont(TOTAL_FONT_SIZE));
+        int textWidth = fm.stringWidth(totalLabel.getText());
+        float size = TOTAL_FONT_SIZE;
+        if (textWidth > available && textWidth > 0) {
+            size = Math.max(15f, TOTAL_FONT_SIZE * available / textWidth);
+        }
+        totalLabel.setFont(bold.deriveFont(size));
     }
 
     /**
@@ -343,6 +595,10 @@ public class MenuPage extends JPanel {
     /** Jumps the scroll pane to the top of the given category section. */
     private void scrollTo(JPanel section) {
         if (section != null && scrollPane != null) {
+            if (scrollTimer != null) {
+                scrollTimer.stop();     // a click wins over a wheel glide in progress
+            }
+            scrollTarget = section.getY();
             scrollPane.getViewport().setViewPosition(new Point(0, section.getY()));
         }
     }

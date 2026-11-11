@@ -1,10 +1,15 @@
 package util;
 
+import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.Image;
+import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.image.BufferedImage;
 import java.util.HashMap;
 import java.util.Map;
 import javax.swing.ImageIcon;
@@ -36,12 +41,28 @@ public final class UiKit {
         String key = path + "|" + width + "x" + height;
         ImageIcon cached = ICONS.get(key);
         if (cached == null) {
-            Image image = new ImageIcon(path).getImage()
-                .getScaledInstance(width, height, Image.SCALE_SMOOTH);
-            cached = new ImageIcon(image);
+            cached = new ImageIcon(scale(new ImageIcon(path).getImage(), width, height));
             ICONS.put(key, cached);
         }
         return cached;
+    }
+
+    /**
+     * Draws the picture into real pixels once.
+     *
+     * getScaledInstance keeps its result in a soft reference instead: whenever
+     * memory gets tight (which fades, with their temporary buffers, provoke)
+     * it throws the pixels away and re-runs the slow scaling on the next
+     * paint - the classic cause of an animation that stutters and jumps.
+     */
+    private static BufferedImage scale(Image image, int width, int height) {
+        BufferedImage scaled = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2 = scaled.createGraphics();
+        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g2.drawImage(image, 0, 0, width, height, null);
+        g2.dispose();
+        return scaled;
     }
 
     /** A font shipped in public/assets/fonts, at the given size. */
@@ -69,5 +90,22 @@ public final class UiKit {
             @Override public void mouseEntered(MouseEvent e) { button.setBackground(hoverColor); }
             @Override public void mouseExited(MouseEvent e) { button.setBackground(base); }
         });
+    }
+
+    /**
+     * A copy of the graphics context at the given opacity, or null when the
+     * component is fully visible (the caller then paints normally).
+     *
+     * Shared by the fade-in animation: painting a component through this
+     * context fades the component's own drawing and its children together.
+     */
+    public static Graphics2D translucent(Graphics g, float alpha) {
+        if (alpha >= 0.999f) {
+            return null;
+        }
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setComposite(AlphaComposite.getInstance(
+            AlphaComposite.SRC_OVER, Math.max(0f, Math.min(1f, alpha))));
+        return g2;
     }
 }

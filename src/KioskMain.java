@@ -26,6 +26,9 @@ public class KioskMain extends JFrame {
     /** How long the receipt stays on screen before the kiosk resets itself. */
     private static final int RECEIPT_MILLIS = 10000;
 
+    /** How long the landing page takes to fade in (and back from other pages). */
+    private static final int LANDING_FADE_MILLIS = 250;
+
     /** Keys used to find each page inside the CardLayout stack. */
     private static final String INTRO_SCREEN = "intro";
     private static final String LANDING_SCREEN = "landing";
@@ -193,9 +196,13 @@ public class KioskMain extends JFrame {
     /**
      * Fades the landing page in right after the intro ends: a solid
      * UiColors.BACKGROUND cover sits on top of the window and turns
-     * transparent over ~0.5 s, so the page appears smoothly instead of
-     * popping in. (Window.setOpacity does not work on a decorated window,
-     * so the cover is painted instead.)
+     * transparent over {@link #LANDING_FADE_MILLIS}, so the page appears
+     * smoothly instead of popping in. (Window.setOpacity does not work on a
+     * decorated window, so the cover is painted instead.)
+     *
+     * The opacity is worked out from the clock rather than from a step
+     * counter, so the fade lasts the same however the system schedules the
+     * timer.
      */
     private void fadeIn() {
         final float[] alpha = {1f};                       // cover opacity, 1 -> 0
@@ -212,13 +219,13 @@ public class KioskMain extends JFrame {
         getRootPane().setGlassPane(cover);                // top-most, blocks clicks while fading
         cover.setVisible(true);
 
-        Timer fadeTimer = new Timer(10, null);             // 50 steps x 10 ms = 0.5 s
-        final int[] step = {0};
+        final long startedAt = System.nanoTime();
+        Timer fadeTimer = new Timer(10, null);
         fadeTimer.addActionListener(e -> {
-            step[0]++;
-            alpha[0] = 1f - step[0] / 50f;
+            float progress = (System.nanoTime() - startedAt) / (LANDING_FADE_MILLIS * 1_000_000f);
+            alpha[0] = 1f - Math.min(1f, progress);
             cover.repaint();
-            if (step[0] >= 50) {
+            if (progress >= 1f) {
                 fadeTimer.stop();
                 cover.setVisible(false);
             }
