@@ -11,9 +11,11 @@ import util.*;
  * Asks the customer how they want to receive the order: Dine-in or Takeout.
  *
  * The choice is stored in {@link OrderSession} and the page reports back to
- * KioskMain, which then shows the menu.
+ * KioskMain, which then shows the menu. Drawn on
+ * {@link util.ConfirmationBackground}, so it carries the same orange corner
+ * ribbons as the confirmation pages.
  */
-public class OrderOption extends JPanel {
+public class OrderOption extends ConfirmationBackground {
 
     // ============================================================
     // FRONTEND - heading, order-type cards and the back button
@@ -81,15 +83,15 @@ public class OrderOption extends JPanel {
         JPanel handsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 0));
         handsPanel.setOpaque(false);
         handsPanel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        handsPanel.add(buildScaledLabel("public/assets/icons/left_hand.png", 270, 240));
-        handsPanel.add(buildScaledLabel("public/assets/icons/right_hand.png", 270, 240));
+        handsPanel.add(buildScaledLabel("public/assets/icons/left_hand.png", 270, 280));
+        handsPanel.add(buildScaledLabel("public/assets/icons/right_hand.png", 270, 280));
         return handsPanel;
     }
 
-    /** The bar holding the single Back button. */
+    /** The bar holding the single Back button (transparent so the corner ribbon shows). */
     private JPanel buildBackBar() {
         JPanel bar = new JPanel();
-        bar.setBackground(UiColors.BACKGROUND);
+        bar.setOpaque(false);
         bar.setBorder(BorderFactory.createEmptyBorder(12, 12, 30, 12));
         bar.add(buildBackButton());
         return bar;
@@ -132,7 +134,10 @@ public class OrderOption extends JPanel {
     }
 
     private JLabel buildLogo(int size) {
-        return new JLabel(UiKit.icon("public/assets/logo/logo.png", size, size));
+        JLabel logo = new JLabel(UiKit.icon("public/assets/logo/logo.png", size, size));
+        logo.setAlignmentX(Component.CENTER_ALIGNMENT);
+        logo.setHorizontalAlignment(SwingConstants.CENTER);
+        return logo;
     }
 
     private static JLabel buildScaledLabel(String path, int width, int height) {
