@@ -8,9 +8,6 @@
 .vscode/
 .DS_Store
 
-# Environmental Variables
-.env
-
 # Build output - never commit compiled files
 /bin/
 *.class

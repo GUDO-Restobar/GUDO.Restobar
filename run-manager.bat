@@ -10,7 +10,7 @@ cd /d "%~dp0"
 
 set "FXLIB=lib\javafx-sdk\lib"
 set "FXMODS=javafx.controls,javafx.fxml,javafx.media,javafx.swing"
-set "JARS=lib\mysql-connector-j-26.7.0.jar"
+set "JARS=lib\mysql-connector-j-26.7.0.jar;lib\dotenv-java-3.2.0.jar"
 
 if not exist "%FXLIB%" (
     echo ERROR: JavaFX not found at %FXLIB%
