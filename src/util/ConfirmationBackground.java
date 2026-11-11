@@ -20,6 +20,14 @@ public class ConfirmationBackground extends JPanel {
      */
     public static final int AUTO_REDIRECT_MILLIS = 3000;
 
+    /**
+     * Visibility of the corner ribbons: 0 = hidden, 1 = shown. Pages that
+     * fade their contents in (OrderOption) animate these while the page is
+     * appearing; every other page simply leaves them fully visible.
+     */
+    protected float topLeftRibbonAlpha = 1f;
+    protected float bottomRightRibbonAlpha = 1f;
+
     public ConfirmationBackground() {
         setBackground(UiColors.BACKGROUND);
     }
@@ -40,6 +48,7 @@ public class ConfirmationBackground extends JPanel {
         g2.setColor(UiColors.ORANGE);
 
         // Top-left orange corner
+        g2.setComposite(AlphaComposite.SrcOver.derive(topLeftRibbonAlpha));
         Path2D top = new Path2D.Double();
         top.moveTo(0, 0);
         top.lineTo(w * 0.42, 0);
@@ -50,6 +59,7 @@ public class ConfirmationBackground extends JPanel {
         g2.fill(top);
 
         // Bottom-right orange corner
+        g2.setComposite(AlphaComposite.SrcOver.derive(bottomRightRibbonAlpha));
         Path2D bottom = new Path2D.Double();
         bottom.moveTo(w, h);
         bottom.lineTo(w * 0.58, h);
