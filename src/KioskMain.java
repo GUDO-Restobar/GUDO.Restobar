@@ -190,10 +190,11 @@ public class KioskMain extends JFrame {
     }
 
     /**
-     * Fades the landing page in: a solid UiColors.BACKGROUND cover sits on
-     * top of the window and turns transparent over ~600 ms, so the page
-     * appears smoothly instead of popping in. (Window.setOpacity does not
-     * work on a decorated window, so the cover is painted instead.)
+     * Fades the landing page in right after the intro ends: a solid
+     * UiColors.BACKGROUND cover sits on top of the window and turns
+     * transparent over ~0.5 s, so the page appears smoothly instead of
+     * popping in. (Window.setOpacity does not work on a decorated window,
+     * so the cover is painted instead.)
      */
     private void fadeIn() {
         final float[] alpha = {1f};                       // cover opacity, 1 -> 0
@@ -210,13 +211,13 @@ public class KioskMain extends JFrame {
         getRootPane().setGlassPane(cover);                // top-most, blocks clicks while fading
         cover.setVisible(true);
 
-        Timer fadeTimer = new Timer(15, null);             // 40 steps x 15 ms = 600 ms
+        Timer fadeTimer = new Timer(10, null);             // 50 steps x 10 ms = 0.5 s
         final int[] step = {0};
         fadeTimer.addActionListener(e -> {
             step[0]++;
-            alpha[0] = 1f - step[0] / 40f;
+            alpha[0] = 1f - step[0] / 50f;
             cover.repaint();
-            if (step[0] >= 40) {
+            if (step[0] >= 50) {
                 fadeTimer.stop();
                 cover.setVisible(false);
             }

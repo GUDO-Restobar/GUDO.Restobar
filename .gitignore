@@ -7,3 +7,7 @@
 *.iml
 .vscode/
 .DS_Store
+
+# Build output - never commit compiled files
+/bin/
+*.class
