@@ -1,63 +1,49 @@
 package util;
 
 import java.awt.*;
+import java.io.File;
 import java.util.Random;
+import javax.swing.ImageIcon;
 import javax.swing.JComponent;
 
 /**
- * A QR-code-style picture that is drawn at random: every call to
- * {@link #regenerate()} gives a new pattern.
+ * Shows one of the real QR code pictures from public/data/qr, chosen at random.
+ * Call {@link #pickRandom()} to choose another one (never the same one twice
+ * in a row); adding more .png files to the folder adds more choices.
  *
- * Decorative only - it is NOT scannable. The three corner squares are fixed;
- * every other square is black or white by chance.
+ * The pictures are square and drawn into a square, so they are never stretched,
+ * and they already carry their own white margin, which a scanner needs.
  */
 public class RandomQrCode extends JComponent {
 
-    private static final int MODULES = 25;          // squares per side
-    private static final int MODULE_PX = 11;        // size of one square
-    private static final int QUIET_PX = 12;         // white margin around the code
-    private static final int SIZE = MODULES * MODULE_PX + 2 * QUIET_PX;
+    private static final File FOLDER = new File("public/data/qr");
+    private static final int SIZE = 299;
     private static final int SHADOW = 3;
 
-    private static final int FINDER = 7;            // corner square, 7 x 7 squares
-    private static final int[][] FINDER_ORIGINS = {
-        {0, 0}, {0, MODULES - FINDER}, {MODULES - FINDER, 0}};
-
-    private final boolean[][] modules = new boolean[MODULES][MODULES];
+    private final File[] files = FOLDER.listFiles((dir, name) -> name.endsWith(".png"));
     private final Random random = new Random();
 
+    private File current;
+    private ImageIcon picture;
+
     public RandomQrCode() {
+        if (files == null || files.length == 0) {
+            throw new IllegalStateException("No QR code pictures found in " + FOLDER);
+        }
         setPreferredSize(new Dimension(SIZE, SIZE + SHADOW));
-        regenerate();
+        pickRandom();
     }
 
-    /** Fills the code with a new random pattern. */
-    public void regenerate() {
-        for (boolean[] row : modules) {
-            for (int col = 0; col < MODULES; col++) {
-                row[col] = random.nextBoolean();
-            }
-        }
-        for (int[] origin : FINDER_ORIGINS) {
-            drawFinder(origin[0], origin[1]);
-        }
+    /** Switches to another random QR code picture. */
+    public void pickRandom() {
+        File next;
+        do {
+            next = files[random.nextInt(files.length)];
+        } while (files.length > 1 && next.equals(current));
+
+        current = next;
+        picture = UiKit.icon(next.getPath(), SIZE, SIZE);
         repaint();
-    }
-
-    /** A 7 x 7 corner square (dark ring, light ring, dark centre) with a clear border. */
-    private void drawFinder(int row, int col) {
-        for (int dr = -1; dr <= FINDER; dr++) {
-            for (int dc = -1; dc <= FINDER; dc++) {
-                int r = row + dr;
-                int c = col + dc;
-                if (r < 0 || c < 0 || r >= MODULES || c >= MODULES) {
-                    continue;
-                }
-                boolean inside = dr >= 0 && dr < FINDER && dc >= 0 && dc < FINDER;
-                int ring = Math.max(Math.abs(dr - FINDER / 2), Math.abs(dc - FINDER / 2));
-                modules[r][c] = inside && ring != 2;
-            }
-        }
     }
 
     @Override
@@ -65,19 +51,9 @@ public class RandomQrCode extends JComponent {
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setColor(UiColors.shadow(40));
         g2.fillRect(0, SHADOW, SIZE, SIZE);
-        g2.setColor(Color.WHITE);
-        g2.fillRect(0, 0, SIZE, SIZE);
+        picture.paintIcon(this, g2, 0, 0);
         g2.setColor(UiColors.DISABLED);
         g2.drawRect(0, 0, SIZE - 1, SIZE - 1);
-
-        g2.setColor(Color.BLACK);
-        for (int row = 0; row < MODULES; row++) {
-            for (int col = 0; col < MODULES; col++) {
-                if (modules[row][col]) {
-                    g2.fillRect(QUIET_PX + col * MODULE_PX, QUIET_PX + row * MODULE_PX, MODULE_PX, MODULE_PX);
-                }
-            }
-        }
         g2.dispose();
     }
 }

@@ -1,5 +1,6 @@
 import java.awt.*;
 import java.sql.SQLException;
+import java.util.concurrent.ExecutionException;
 import javax.swing.*;
 import data.OrderDAO;
 import ui.kiosk.*;
@@ -41,6 +42,7 @@ public class KioskMain extends JFrame {
     private static final String CHECKOUT_SCREEN = "checkout";
     private static final String START_OVER_SCREEN = "start-over";
     private static final String PAYMENT_OPTION_SCREEN = "payment-option";
+    private static final String CASHLESS_SCREEN = "cashless";
     private static final String RECEIPT_SCREEN = "receipt";
 
     private final CardLayout cardLayout = new CardLayout();
@@ -146,9 +148,15 @@ public class KioskMain extends JFrame {
 
         // --- Payment method: Cash or Cashless ---
         screenPanel.add(new PaymentOption(
-            () -> showScreen(RECEIPT_SCREEN),     // a choice was made
+            this::showPaymentStep,                // a choice was made
             () -> showScreen(CHECKOUT_SCREEN)     // back
         ), PAYMENT_OPTION_SCREEN);
+
+        // --- Cashless: scan the QR code or tap the card ---
+        screenPanel.add(new CashlessPayment(
+            () -> showScreen(RECEIPT_SCREEN),         // paid
+            () -> showScreen(PAYMENT_OPTION_SCREEN)   // discard
+        ), CASHLESS_SCREEN);
 
         // --- Receipt: saves the order, then resets the kiosk for the next customer ---
         OrderReceipt receipt = new OrderReceipt();
@@ -163,10 +171,9 @@ public class KioskMain extends JFrame {
 
         receipt.addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override public void componentShown(java.awt.event.ComponentEvent e) {
-                // The receipt only stays if the order was really saved to the database.
-                if (placeOrder(receipt)) {
-                    receiptTimer.restart();
-                }
+                // The receipt shows a loading logo until the order is saved;
+                // the 10-second reset only starts once the number is on screen.
+                placeOrder(receipt, receiptTimer::restart);
             }
             @Override public void componentHidden(java.awt.event.ComponentEvent e) {
                 receiptTimer.stop();
@@ -259,6 +266,12 @@ public class KioskMain extends JFrame {
         cardLayout.show(screenPanel, screen);
     }
 
+    /** Cash goes straight to the receipt; cashless shows the QR / card page first. */
+    private void showPaymentStep() {
+        boolean cashless = "Cashless".equals(OrderSession.getInstance().getPaymentMethod());
+        showScreen(cashless ? CASHLESS_SCREEN : RECEIPT_SCREEN);
+    }
+
     /** Rebuilds the Add Order page for one product and shows it. */
     private void showAddOrder(Product product) {
         reloadStock(); // the quantity limits are read from the stock when the page is built
@@ -329,27 +342,43 @@ public class KioskMain extends JFrame {
     // ============================================================
 
     /**
-     * Saves the order (and reduces the stock) in MySQL.
-     * @return true if it was saved; false if the customer was sent back to Checkout
+     * Saves the order (and reduces the stock) in MySQL without freezing the
+     * window, so the receipt can animate its loading logo meanwhile.
+     * On success the receipt gets its order number and {@code onSaved} runs;
+     * on failure the customer is sent back to Checkout.
      */
-    private boolean placeOrder(OrderReceipt receipt) {
+    private void placeOrder(OrderReceipt receipt, Runnable onSaved) {
         OrderSession session = OrderSession.getInstance();
-        try {
-            int orderID = OrderDAO.saveOrder(
-                cart, session.getOrderType(), session.getPaymentMethod());
-            session.setOrderID(orderID);
-            receipt.setOrderInfo(orderID, session.getOrderType(), session.getPaymentMethod());
-            reloadStock();
-            menuPage.refreshAvailability(cart);
-            return true;
-        } catch (OrderDAO.OutOfStockException e) {
-            orderFailed("Sorry, " + e.getItemName() + " just ran out of stock.\n"
-                + "Your order was adjusted to what is still available. Please check it again.");
-        } catch (SQLException e) {
-            e.printStackTrace();
-            orderFailed("Sorry, we couldn't save your order right now.\nPlease try again.");
-        }
-        return false;
+        String orderType = session.getOrderType();
+        String paymentMethod = session.getPaymentMethod();
+
+        new SwingWorker<Integer, Void>() {
+            @Override protected Integer doInBackground() throws Exception {
+                return OrderDAO.saveOrder(cart, orderType, paymentMethod);
+            }
+
+            @Override protected void done() {
+                try {
+                    int orderID = get();
+                    session.setOrderID(orderID);
+                    receipt.setOrderInfo(orderID, orderType, paymentMethod);
+                    reloadStock();
+                    menuPage.refreshAvailability(cart);
+                    onSaved.run();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                } catch (ExecutionException e) {
+                    if (e.getCause() instanceof OrderDAO.OutOfStockException) {
+                        OrderDAO.OutOfStockException out = (OrderDAO.OutOfStockException) e.getCause();
+                        orderFailed("Sorry, " + out.getItemName() + " just ran out of stock.\n"
+                            + "Your order was adjusted to what is still available. Please check it again.");
+                    } else {
+                        e.getCause().printStackTrace();
+                        orderFailed("Sorry, we couldn't save your order right now.\nPlease try again.");
+                    }
+                }
+            }
+        }.execute();
     }
 
     /** Puts the customer back on Checkout with an order that matches the real stock. */

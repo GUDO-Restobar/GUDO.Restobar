@@ -13,13 +13,11 @@ import util.*;
  * Asks the customer how they want to pay: Cash or Cashless.
  *
  * The choice is stored in {@link OrderSession} and the page reports back to
- * KioskMain, which then shows the receipt. Drawn on {@link ConfirmationBackground},
- * so it carries the same orange corner ribbons as the other full-screen pages.
- *
- * Every time the page is shown, its elements fade in one after the other:
- * top ribbon, logo, heading, sub-heading, payment cards, back button, bottom ribbon.
+ * KioskMain, which decides what comes next. Drawn on the orange corner ribbons
+ * of {@link FadeInPage}: top ribbon, logo, heading, sub-heading, payment cards,
+ * back button and bottom ribbon fade in one after the other.
  */
-public class PaymentOption extends ConfirmationBackground {
+public class PaymentOption extends FadeInPage {
 
     // ============================================================
     // FRONTEND - heading, payment cards and the back button
@@ -44,28 +42,13 @@ public class PaymentOption extends ConfirmationBackground {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
 
         // The order below is the order of the fade-in.
-        entrance.add(alpha -> topLeftRibbonAlpha = alpha);
         add(Box.createRigidArea(new Dimension(0, 30)));
         add(buildHeading());
         add(Box.createRigidArea(new Dimension(0, 30)));
         add(fade(buildPaymentCards()));
         add(Box.createRigidArea(new Dimension(0, 20)));
         add(buildBackBar());
-        entrance.add(alpha -> bottomRightRibbonAlpha = alpha);
-
-        // Replay the fade-in on every visit; hiding the page resets it to blank.
-        entrance.reset();
-        addComponentListener(new ComponentAdapter() {
-            @Override public void componentShown(ComponentEvent e) { entrance.start(); }
-            @Override public void componentHidden(ComponentEvent e) { entrance.reset(); }
-        });
-    }
-
-    /** Wraps an element so it fades, and adds it as the next step of the entrance. */
-    private FadingPanel fade(Component element) {
-        FadingPanel fading = new FadingPanel(element);
-        entrance.add(fading::setAlpha);
-        return fading;
+        finishEntrance();
     }
 
     /** Logo, the two headline lines and the sub-heading, all centred. */
@@ -150,7 +133,7 @@ public class PaymentOption extends ConfirmationBackground {
     // BACKEND - remember the choice, then hand over to KioskMain
     // ============================================================
 
-    /** Stores Cash / Cashless for the whole order, then shows the receipt. */
+    /** Stores Cash / Cashless for the whole order, then lets KioskMain continue. */
     private void choosePaymentMethod(String paymentMethod) {
         // The payment method is kept apart from the order type (Dine-in / Takeout).
         OrderSession.getInstance().setPaymentMethod(paymentMethod);
