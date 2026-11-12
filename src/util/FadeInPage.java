@@ -28,7 +28,9 @@ public abstract class FadeInPage extends ConfirmationBackground {
         addComponentListener(new ComponentAdapter() {
             @Override public void componentShown(ComponentEvent e) {
                 onShown();
-                entrance.start();
+                if (playsOnShow()) {
+                    entrance.start();
+                }
             }
             @Override public void componentHidden(ComponentEvent e) {
                 entrance.reset();
@@ -51,4 +53,14 @@ public abstract class FadeInPage extends ConfirmationBackground {
 
     /** Hook: runs each time the page is shown, just before the fade-in starts. */
     protected void onShown() {}
+
+    /** Hook: return false when the page must wait (e.g. for data) and call {@link #playEntrance()} itself. */
+    protected boolean playsOnShow() {
+        return true;
+    }
+
+    /** Starts the fade-in now; for pages that delayed it with {@link #playsOnShow()}. */
+    protected final void playEntrance() {
+        entrance.start();
+    }
 }

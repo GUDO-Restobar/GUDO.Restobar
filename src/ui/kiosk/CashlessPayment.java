@@ -11,8 +11,8 @@ import util.*;
  * The cashless payment page: scan the QR code, or tap the card on the reader.
  *
  * "Pay Card" completes the payment (KioskMain then shows the receipt);
- * "Discard Payment" goes back to the payment options. A new random QR code is
- * drawn every time the page is shown, and the page fades in element by element
+ * "Discard Payment" goes back to the payment options. A random QR code is
+ * picked every time the page is shown, and the page fades in element by element
  * (see {@link FadeInPage}).
  */
 public class CashlessPayment extends FadeInPage {
@@ -64,10 +64,10 @@ public class CashlessPayment extends FadeInPage {
         finishEntrance();
     }
 
-    /** A new random QR code every time the page opens. */
+    /** A different random QR code every time the page opens. */
     @Override
     protected void onShown() {
-        qrCode.regenerate();
+        qrCode.pickRandom();
     }
 
     /** An orange heading with a few centred lines of text under it. */
