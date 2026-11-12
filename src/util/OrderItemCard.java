@@ -3,7 +3,10 @@ package util;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.geom.Line2D;
+import java.awt.geom.RoundRectangle2D;
 import java.util.function.IntConsumer;
+import java.util.function.IntSupplier;
 import javax.swing.*;
 
 /**
@@ -16,11 +19,15 @@ import javax.swing.*;
  *
  * The trash icon needs two presses: the first one only shows "Are you sure?".
  */
-public class OrderItemCard extends JPanel {
+public class OrderItemCard extends FadeablePanel {
 
-    /** Height of the name / quantity row. Matches the 30px circle buttons. */
-    private static final int HEADER_HEIGHT = 30;
+    /** Height of the name / quantity row: room for a two-line name. */
+    private static final int HEADER_HEIGHT = 36;
     private static final int NAME_GAP = 14;
+    /** One font size for the meal name and the price. */
+    private static final float TEXT_SIZE = 14f;
+    /** Free space between the quantity controls and the price. */
+    private static final int PRICE_GAP = 24;
 
     private static final String TRASH_ICON = "public/assets/icons/trash.png";
     private static final int TRASH_SIZE = 23;
@@ -28,15 +35,30 @@ public class OrderItemCard extends JPanel {
     /** Shown next to the trash icon after the first press. */
     private static final String CONFIRM_TEXT = "Are you sure?";
 
-    private static final int CARD_HEIGHT = 200;
+    private static final int CARD_HEIGHT = 170;
+    private static final int IMAGE_SIZE = 124;
+    /** Free space between the picture and the left edge of the card. */
+    private static final int IMAGE_MARGIN = 14;
+    /** How long "Are you sure?" takes to fade in. */
+    private static final int CONFIRM_FADE_MILLIS = 200;
+    /** How long "Are you sure?" stays before the first press is forgotten. */
+    private static final int CONFIRM_MILLIS = 5000;
+    /** Space between "Are you sure?" and the trash icon. */
+    private static final int CONFIRM_GAP = 3;
     private static final int ARC = 14;
     private static final int SHADOW = 3;
 
     private final Font bold = UiKit.font("Montserrat/static/Montserrat-Bold.ttf");
     private final Font regular = UiKit.font("Montserrat/static/Montserrat-Regular.ttf");
+    private final Font inter = UiKit.font("Inter/static/Inter_18pt-Regular.ttf");
 
     /** Set by the first press of the trash icon. */
     private boolean confirming;
+    /** Visibility of "Are you sure?": fades from 0 to 1 after the first press. */
+    private float confirmAlpha = 1f;
+    private final FadeInSequence confirmFade = new FadeInSequence(this, CONFIRM_FADE_MILLIS, 0);
+    /** Forgets the first press after {@link #CONFIRM_MILLIS}. */
+    private final Timer confirmTimer = new Timer(CONFIRM_MILLIS, e -> cancelConfirm());
 
     /** Needed to place the confirm text right beside the icon. */
     private JButton trashButton;
@@ -45,6 +67,7 @@ public class OrderItemCard extends JPanel {
     private Runnable onRemove = () -> {};
 
     private final Product product;
+    private final IntSupplier maxQuantity;
     private final IntConsumer onQuantityChange;
     private int quantity;
     private JLabel quantityLabel;
@@ -54,20 +77,23 @@ public class OrderItemCard extends JPanel {
     /**
      * @param product          the product this card shows
      * @param quantity         how many of it are in the order
+     * @param maxQuantity      the most this line may hold (its share of the stock)
      * @param onQuantityChange called with the new quantity after the + or - circle is pressed
      * @param onEdit           runs when "Edit Meal" is pressed
      * @param onRemove         runs on the second press of the trash icon
      */
     public OrderItemCard(Product product,
                          int quantity,
+                         IntSupplier maxQuantity,
                          IntConsumer onQuantityChange,
                          Runnable onEdit,
                          Runnable onRemove) {
-        this(product, quantity, new String[0], new String[0], onQuantityChange, onEdit, onRemove);
+        this(product, quantity, maxQuantity, new String[0], new String[0], onQuantityChange, onEdit, onRemove);
     }
 
     public OrderItemCard(Product product,
                          int quantity,
+                         IntSupplier maxQuantity,
                          String[] leftAddOns,
                          String[] rightAddOns,
                          IntConsumer onQuantityChange,
@@ -76,14 +102,17 @@ public class OrderItemCard extends JPanel {
 
         this.product = product;
         this.quantity = Math.max(1, quantity);
+        this.maxQuantity = maxQuantity;
         this.onQuantityChange = onQuantityChange != null ? onQuantityChange : q -> {};
         Runnable edit = onEdit != null ? onEdit : () -> {};
         this.onRemove = onRemove != null ? onRemove : () -> {};
 
-        setLayout(new BorderLayout(18, 0));
+        setLayout(new BorderLayout());
         setOpaque(false);
-        setBorder(BorderFactory.createEmptyBorder(16, 18, 16 + SHADOW, 20));
+        setBorder(BorderFactory.createEmptyBorder(10, IMAGE_MARGIN, 16 + SHADOW, 17));
         setAlignmentX(Component.LEFT_ALIGNMENT);
+        confirmFade.add(alpha -> confirmAlpha = alpha);
+        confirmTimer.setRepeats(false);
 
         add(buildImage(product.getImagePath()), BorderLayout.WEST);
         add(buildInfo(product.getName(), leftAddOns, rightAddOns, edit), BorderLayout.CENTER);
@@ -106,9 +135,9 @@ public class OrderItemCard extends JPanel {
         onQuantityChange.accept(quantity);
     }
 
-    /** The most of this product the customer can have: whatever is in stock. */
+    /** The most this line can have: its share of the stock. */
     private int maxQuantity() {
-        return Math.max(1, Inventory.getStock(product));
+        return Math.max(1, maxQuantity.getAsInt());
     }
 
     /** Disables the + circle once the quantity has reached the stock. */
@@ -124,7 +153,7 @@ public class OrderItemCard extends JPanel {
     }
 
     private JLabel buildImage(String imagePath) {
-        JLabel image = new JLabel(UiKit.icon(imagePath, 130, 130));
+        JLabel image = new JLabel(UiKit.icon(imagePath, IMAGE_SIZE, IMAGE_SIZE));
         image.setVerticalAlignment(SwingConstants.CENTER);
         return image;
     }
@@ -144,10 +173,10 @@ public class OrderItemCard extends JPanel {
         JPanel header = new JPanel(new HeaderLayout());
         header.setOpaque(false);
 
-        MealNameLabel nameLabel = new MealNameLabel(name, bold, UiColors.TEXT_DARK);
+        MealNameLabel nameLabel = new MealNameLabel(name, bold.deriveFont(TEXT_SIZE), UiColors.TEXT_DARK);
 
         quantityLabel = new JLabel(String.valueOf(quantity));
-        quantityLabel.setFont(bold.deriveFont(20f));
+        quantityLabel.setFont(bold.deriveFont(16f));
         quantityLabel.setForeground(UiColors.ORANGE);
 
         CircleButton minus = new CircleButton(false);
@@ -162,9 +191,9 @@ public class OrderItemCard extends JPanel {
         JPanel controls = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         controls.setOpaque(false);
         controls.add(minus);
-        controls.add(Box.createHorizontalStrut(5));
+        controls.add(Box.createHorizontalStrut(10));
         controls.add(quantityLabel);
-        controls.add(Box.createHorizontalStrut(5));
+        controls.add(Box.createHorizontalStrut(10));
         controls.add(plus);
 
         header.add(nameLabel);
@@ -211,9 +240,9 @@ public class OrderItemCard extends JPanel {
         row.setOpaque(false);
 
         OutlineButton edit = new OutlineButton("Edit Meal");
-        edit.setFont(regular.deriveFont(14f));
-        edit.setForeground(UiColors.TEXT_DARK);
-        edit.setPreferredSize(new Dimension(145, 25));
+        edit.setFont(inter.deriveFont(12.5f));
+        edit.setForeground(UiColors.BROWN);
+        edit.setPreferredSize(new Dimension(139, 25));
         edit.addActionListener(e -> onEdit.run());
 
         row.add(edit);
@@ -223,9 +252,10 @@ public class OrderItemCard extends JPanel {
     private JPanel buildRightColumn() {
         JPanel column = new JPanel(new BorderLayout());
         column.setOpaque(false);
+        column.setBorder(BorderFactory.createEmptyBorder(0, PRICE_GAP, 0, 0));
 
         priceLabel = new JLabel(UiKit.peso(product.getPrice() * quantity));
-        priceLabel.setFont(bold.deriveFont(15f));
+        priceLabel.setFont(bold.deriveFont(TEXT_SIZE));
         priceLabel.setForeground(UiColors.ORANGE);
 
         JPanel priceRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
@@ -237,16 +267,20 @@ public class OrderItemCard extends JPanel {
         remove.setOpaque(false);
         remove.setContentAreaFilled(false);
         remove.setBorderPainted(false);
+        remove.setBorder(BorderFactory.createEmptyBorder());
+        remove.setMargin(new Insets(0, 0, 0, 0));
         remove.setFocusPainted(false);
         remove.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         remove.setToolTipText("Remove item");
         remove.addActionListener(e -> {
             if (confirming) {
+                confirmTimer.stop();
                 onRemove.run();
             } else {
-                // First press only asks; the second one removes this card.
+                // First press only asks; a second press within 5 seconds removes this card.
                 confirming = true;
-                repaint();
+                confirmFade.start();
+                confirmTimer.restart();
             }
         });
         trashButton = remove;
@@ -257,6 +291,18 @@ public class OrderItemCard extends JPanel {
         column.add(trashRow, BorderLayout.SOUTH);
 
         return column;
+    }
+
+    /** The 5 seconds are up: "Are you sure?" disappears and the next press asks again. */
+    private void cancelConfirm() {
+        confirming = false;
+        repaint();
+    }
+
+    @Override
+    public void removeNotify() {
+        confirmTimer.stop();   // a removed card must not keep a timer running
+        super.removeNotify();
     }
 
     @Override
@@ -274,9 +320,9 @@ public class OrderItemCard extends JPanel {
         g2.setColor(UiColors.SURFACE);
         g2.fillRoundRect(0, 0, getWidth() - 1, faceHeight, ARC, ARC);
 
-        g2.setColor(UiColors.BORDER_CARD);
-        g2.setStroke(new BasicStroke(1f));
-        g2.drawRoundRect(0, 0, getWidth() - 2, faceHeight - 1, ARC, ARC);
+        g2.setColor(UiColors.BROWN);
+        g2.setStroke(new BasicStroke(UiKit.BORDER_WIDTH));
+        g2.draw(new RoundRectangle2D.Double(0.5, 0.5, getWidth() - 2, faceHeight - 1, ARC, ARC));
 
         // Drawn instead of added as a component, so showing it never re-lays
         // out the card and never squeezes the add-on columns.
@@ -284,10 +330,11 @@ public class OrderItemCard extends JPanel {
             Point icon = SwingUtilities.convertPoint(trashButton, 0, 0, this);
             g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
                 RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-            g2.setFont(bold.deriveFont(11f));
+            g2.setFont(bold.deriveFont(10.5f));
             g2.setColor(UiColors.DANGER);
+            g2.setComposite(AlphaComposite.SrcOver.derive(confirmAlpha));
             FontMetrics fm = g2.getFontMetrics();
-            int x = icon.x - 8 - fm.stringWidth(CONFIRM_TEXT);
+            int x = icon.x - CONFIRM_GAP - fm.stringWidth(CONFIRM_TEXT);
             int y = icon.y + (trashButton.getHeight() - fm.getHeight()) / 2 + fm.getAscent();
             g2.drawString(CONFIRM_TEXT, x, y);
         }
@@ -335,63 +382,32 @@ public class OrderItemCard extends JPanel {
     }
 
     /**
-     * The meal name. Keeps the normal 20pt look when it fits; otherwise it
-     * shrinks, then wraps onto two lines (still inside the row height), and
-     * only as a last resort is cut with "...".
+     * The meal name, always at the same size as the price. A name that is too
+     * wide goes onto a second line; only a name too long for two lines is cut
+     * with "...".
      */
     private static class MealNameLabel extends JComponent {
-        private static final float NORMAL_SIZE = 20f;
-        private static final float MIN_SINGLE_LINE_SIZE = 16f;
-        private static final float MIN_SIZE = 9f;
-
         private final String text;
-        private final Font baseFont;
+        private final Font font;
         private String[] lines;
-        private Font font;
 
-        MealNameLabel(String text, Font baseFont, Color color) {
+        MealNameLabel(String text, Font font, Color color) {
             this.text = text == null ? "" : text.trim();
-            this.baseFont = baseFont;
+            this.font = font;
             setForeground(color);
             setToolTipText(this.text);
             fitTo(10_000);
         }
 
-        /** Chooses the font size and line breaks so the name fits in the given width. */
+        /** Chooses the line breaks so the name fits in the given width. */
         void fitTo(int width) {
+            FontMetrics fm = getFontMetrics(font);
             int maxWidth = Math.max(40, width);
-
-            // 1) Normal size down to 16pt on a single line.
-            for (float size = NORMAL_SIZE; size >= MIN_SINGLE_LINE_SIZE; size--) {
-                Font candidate = baseFont.deriveFont(size);
-                if (getFontMetrics(candidate).stringWidth(text) <= maxWidth) {
-                    apply(candidate, new String[] {text});
-                    return;
-                }
-            }
-
-            // 2) Two lines, as large as the row height and width allow.
-            for (float size = 15f; size >= MIN_SIZE; size--) {
-                Font candidate = baseFont.deriveFont(size);
-                FontMetrics fm = getFontMetrics(candidate);
-                if (fm.getHeight() * 2 > HEADER_HEIGHT) {
-                    continue;
-                }
-                String[] wrapped = wrap(text, fm, maxWidth);
-                if (wrapped != null) {
-                    apply(candidate, wrapped);
-                    return;
-                }
-            }
-
-            // 3) Last resort: smallest two-line size, second line cut with "...".
-            Font smallest = baseFont.deriveFont(MIN_SIZE);
-            FontMetrics fm = getFontMetrics(smallest);
-            apply(smallest, wrapWithEllipsis(text, fm, maxWidth));
+            String[] wrapped = wrap(text, fm, maxWidth);
+            apply(wrapped != null ? wrapped : wrapWithEllipsis(text, fm, maxWidth));
         }
 
-        private void apply(Font newFont, String[] newLines) {
-            font = newFont;
+        private void apply(String[] newLines) {
             lines = newLines;
             FontMetrics fm = getFontMetrics(font);
             int widest = 0;
@@ -487,12 +503,14 @@ public class OrderItemCard extends JPanel {
 
     /** Small orange circle holding a white minus or plus. */
     private static class CircleButton extends JButton {
+        private static final int SIZE = 15;
+
         private final boolean plus;
         private boolean hover;
 
         CircleButton(boolean plus) {
             this.plus = plus;
-            setPreferredSize(new Dimension(30, 30));
+            setPreferredSize(new Dimension(SIZE, SIZE));
             setOpaque(false);
             setContentAreaFilled(false);
             setBorderPainted(false);
@@ -517,13 +535,14 @@ public class OrderItemCard extends JPanel {
 
             g2.setColor(!isEnabled() ? UiColors.DISABLED
                 : hover ? UiColors.ORANGE_HOVER : UiColors.ORANGE);
-            g2.fillOval(0, 0, 25, 25);
+            g2.fillOval(0, 0, SIZE, SIZE);
 
+            double mid = SIZE / 2.0;
             g2.setColor(UiColors.WHITE);
-            g2.setStroke(new BasicStroke(2.4f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            g2.drawLine(8, 13, 18, 13);
+            g2.setStroke(new BasicStroke(1.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+            g2.draw(new Line2D.Double(4, mid, SIZE - 4, mid));
             if (plus) {
-                g2.drawLine(13, 8, 13, 18);
+                g2.draw(new Line2D.Double(mid, 4, mid, SIZE - 4));
             }
             g2.dispose();
         }
@@ -552,8 +571,9 @@ public class OrderItemCard extends JPanel {
             g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
             g2.setColor(hover ? UiColors.HOVER_GREY_PALE : UiColors.SURFACE);
             g2.fillRoundRect(0, 0, getWidth() - 1, getHeight() - 1, 6, 6);
-            g2.setColor(UiColors.BORDER_BUTTON);
-            g2.drawRoundRect(0, 0, getWidth() - 2, getHeight() - 2, 6, 6);
+            g2.setColor(UiColors.BROWN);
+            g2.setStroke(new BasicStroke(UiKit.BORDER_WIDTH));
+            g2.draw(new RoundRectangle2D.Double(0.5, 0.5, getWidth() - 2, getHeight() - 2, 6, 6));
             g2.dispose();
             super.paintComponent(g);
         }

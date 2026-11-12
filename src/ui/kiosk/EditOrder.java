@@ -3,8 +3,7 @@ package ui.kiosk;
 import java.awt.*;
 import javax.swing.*;
 import util.Cart;
-import util.Inventory;
-import util.Product;
+import util.OrderLine;
 import util.UiColors;
 import util.UiKit;
 
@@ -25,8 +24,8 @@ public class EditOrder extends QuantityPage {
     /** Scratch copy of the cart; the real one only changes on Save / Remove. */
     private final Cart draft;
 
-    public EditOrder(Product product, Cart cart, Runnable onSaved, Runnable onCancel) {
-        super(product, cart, onSaved, onCancel);
+    public EditOrder(OrderLine line, Cart cart, Runnable onSaved, Runnable onCancel) {
+        super(line.getProduct(), line, cart, onSaved, onCancel);
         this.draft = cart.copy();
     }
 
@@ -36,12 +35,12 @@ public class EditOrder extends QuantityPage {
 
     /** Starts at the amount that is already in the order. */
     @Override protected int startingQuantity() {
-        return cart.getItems().getOrDefault(product, 1);
+        return line.getQuantity();
     }
 
-    /** The order already holds this meal, so the limit is simply what is in stock. */
+    /** The stock, minus what the other lines of this meal already use. */
     @Override protected int maxQuantity() {
-        return Math.max(1, Inventory.getStock(product));
+        return Math.max(1, cart.maxQuantity(line));
     }
 
     @Override protected String saveButtonPrefix() {
@@ -50,7 +49,7 @@ public class EditOrder extends QuantityPage {
 
     /** Edits the copy first, then commits it to the real cart in one step. */
     @Override protected void commitOrder() {
-        draft.setQuantity(product, quantity);
+        draft.setQuantity(line, quantity);
         cart.replaceWith(draft);
     }
 
@@ -60,7 +59,7 @@ public class EditOrder extends QuantityPage {
         details.add(buildRemoveButton());
     }
 
-    /** Takes the whole meal out of the order. */
+    /** Takes this line out of the order. */
     private JButton buildRemoveButton() {
         JButton remove = new JButton("Remove from Order");
         remove.setFont(UiKit.font("Montserrat/static/Montserrat-Regular.ttf").deriveFont(14f));
@@ -104,7 +103,7 @@ public class EditOrder extends QuantityPage {
 
     /** Drops the meal from the order; the running total recalculates itself. */
     private void removeItem() {
-        cart.setQuantity(product, 0);
+        cart.remove(line);
         onSaved.run();
     }
 }

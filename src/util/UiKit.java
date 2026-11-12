@@ -29,6 +29,9 @@ import javax.swing.JButton;
  */
 public final class UiKit {
 
+    /** Stroke width of the thin outlines on cards and light buttons. */
+    public static final float BORDER_WIDTH = 0.33f;
+
     /** The scaled pictures already created, by "path|width x height". */
     private static final Map<String, ImageIcon> ICONS = new HashMap<>();
 

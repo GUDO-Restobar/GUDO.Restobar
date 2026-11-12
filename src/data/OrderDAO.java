@@ -2,10 +2,10 @@ package data;
 
 import java.math.BigDecimal;
 import java.sql.*;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 import util.Cart;
-import util.Product;
+import util.OrderLine;
 
 /**
  * Saves a finished order: CUSTOMER_ORDER, ORDER_DETAIL and PAYMENT rows, and
@@ -59,7 +59,7 @@ public final class OrderDAO {
     public static int saveOrder(Cart cart, String orderType, String paymentMethod)
             throws SQLException, OutOfStockException {
 
-        Map<Product, Integer> items = new LinkedHashMap<>(cart.getItems());
+        List<OrderLine> items = new ArrayList<>(cart.getLines());
         if (items.isEmpty()) {
             throw new IllegalArgumentException("The order is empty.");
         }
@@ -69,9 +69,9 @@ public final class OrderDAO {
         String method = "Cashless".equalsIgnoreCase(paymentMethod) ? "Cashless" : "Cash";
 
         BigDecimal total = BigDecimal.ZERO;
-        for (Map.Entry<Product, Integer> entry : items.entrySet()) {
-            total = total.add(BigDecimal.valueOf(entry.getKey().getPrice())
-                .multiply(BigDecimal.valueOf(entry.getValue())));
+        for (OrderLine line : items) {
+            total = total.add(BigDecimal.valueOf(line.getProduct().getPrice())
+                .multiply(BigDecimal.valueOf(line.getQuantity())));
         }
 
         try (Connection conn = dbconnect.getConnection()) {
@@ -79,14 +79,14 @@ public final class OrderDAO {
             try {
                 // 1) Take the items out of stock. Fails if someone else bought them first.
                 try (PreparedStatement stock = conn.prepareStatement(DECREASE_STOCK)) {
-                    for (Map.Entry<Product, Integer> entry : items.entrySet()) {
-                        int quantity = entry.getValue();
+                    for (OrderLine line : items) {
+                        int quantity = line.getQuantity();
                         stock.setInt(1, quantity);
                         stock.setInt(2, quantity);
-                        stock.setInt(3, entry.getKey().getItemID());
+                        stock.setInt(3, line.getProduct().getItemID());
                         stock.setInt(4, quantity);
                         if (stock.executeUpdate() == 0) {
-                            throw new OutOfStockException(entry.getKey().getName());
+                            throw new OutOfStockException(line.getProduct().getName());
                         }
                     }
                 }
@@ -108,11 +108,11 @@ public final class OrderDAO {
 
                 // 3) One ORDER_DETAIL row per item (subTotal is calculated by MySQL).
                 try (PreparedStatement detail = conn.prepareStatement(INSERT_DETAIL)) {
-                    for (Map.Entry<Product, Integer> entry : items.entrySet()) {
+                    for (OrderLine line : items) {
                         detail.setInt(1, orderID);
-                        detail.setInt(2, entry.getKey().getItemID());
-                        detail.setInt(3, entry.getValue());
-                        detail.setBigDecimal(4, BigDecimal.valueOf(entry.getKey().getPrice()));
+                        detail.setInt(2, line.getProduct().getItemID());
+                        detail.setInt(3, line.getQuantity());
+                        detail.setBigDecimal(4, BigDecimal.valueOf(line.getProduct().getPrice()));
                         detail.addBatch();
                     }
                     detail.executeBatch();

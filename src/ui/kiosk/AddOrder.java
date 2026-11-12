@@ -18,7 +18,7 @@ import util.Product;
 public class AddOrder extends QuantityPage {
 
     public AddOrder(Product product, Cart cart, Runnable onSaved, Runnable onCancel) {
-        super(product, cart, onSaved, onCancel);
+        super(product, null, cart, onSaved, onCancel);
     }
 
     @Override protected String pageTitle() {
@@ -30,20 +30,16 @@ public class AddOrder extends QuantityPage {
      * in the order.
      */
     @Override protected int maxQuantity() {
-        int stock = Inventory.getStock(product);
-        stock -= cart.getItems().getOrDefault(product, 0);
-        return Math.max(1, stock);
+        return Math.max(1, Inventory.getAvailable(product, cart));
     }
 
     @Override protected String saveButtonPrefix() {
         return "Add to Order";
     }
 
-    /** Puts the chosen quantity into the cart, one piece at a time. */
+    /** Always a new line, even if the product is already in the order. */
     @Override protected void commitOrder() {
-        for (int i = 0; i < quantity; i++) {
-            cart.add(product);
-        }
+        cart.add(product, quantity);
     }
 
     /** Nothing extra under the placeholder sections. */
