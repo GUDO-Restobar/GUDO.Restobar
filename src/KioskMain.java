@@ -285,8 +285,7 @@ public class KioskMain extends JFrame {
 
         orderAddedPage = new OrderAdded(
             cart.getTotal(),
-            () -> showScreen(MENU_SCREEN),     // keep ordering
-            () -> showScreen(CHECKOUT_SCREEN)  // or pay now
+            () -> showScreen(MENU_SCREEN)      // back to the menu
         );
         screenPanel.add(orderAddedPage, ORDER_ADDED_SCREEN);
         showScreen(ORDER_ADDED_SCREEN);
