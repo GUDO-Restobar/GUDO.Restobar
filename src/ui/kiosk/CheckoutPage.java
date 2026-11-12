@@ -4,11 +4,11 @@ package ui.kiosk;
 // IMPORTS
 // ============================================================
 import java.awt.*;
+import java.awt.event.HierarchyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.util.ArrayList;
+import java.awt.geom.RoundRectangle2D;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Consumer;
 import javax.swing.*;
 import util.*;
@@ -33,10 +33,12 @@ public class CheckoutPage extends JPanel {
     /** The two states the middle of the page can be in. */
     private static final String EMPTY_CARD = "empty";
     private static final String LIST_CARD = "list";
+    /** Room above the first card so the scroll viewport never clips its border. */
+    private static final int TOP_PADDING = 4;
 
     private final Cart cart;
-    /** Called with the product whose "Edit Meal" button was pressed. */
-    private final Consumer<Product> onEditItem;
+    /** Called with the order line whose "Edit Meal" button was pressed. */
+    private final Consumer<OrderLine> onEditItem;
     /** Called when the customer wants to go back to the menu. */
     private final Runnable onOrderMore;
     /** Called when the customer wants to throw the order away. */
@@ -46,42 +48,67 @@ public class CheckoutPage extends JPanel {
 
     private final Font bold = UiKit.font("Montserrat/static/Montserrat-Bold.ttf");
     private final Font regular = UiKit.font("Montserrat/static/Montserrat-Regular.ttf");
+    private final Font inter = UiKit.font("Inter/static/Inter_18pt-Regular.ttf");
 
     private final CardLayout centerLayout = new CardLayout();
     private final JPanel centerPanel = new JPanel(centerLayout);
     private final JPanel itemsPanel = new ScrollablePanel();
-    private final JLabel totalAmount = new JLabel("\u20B10.00");
+    private final FadeLabel totalAmount = new FadeLabel("\u20B10.00", null, SwingConstants.LEFT);
+
+    // Entrance animation: logo and title, the order cards (or the empty box),
+    // then the total. The bottom buttons are always there.
+    private static final int FADE_MILLIS = 250;
+    private static final int STAGGER_MILLIS = 100;
+    private final FadeInSequence entrance = new FadeInSequence(this, FADE_MILLIS, STAGGER_MILLIS);
+    private final PlaceholderPanel placeholder = new PlaceholderPanel();
+    private FadeLabel logo;
+    private FadeLabel title;
+    private FadeLabel totalCaption;
 
     public CheckoutPage(Cart cart, Runnable onOrderMore, Runnable onStartOver,
-                        Runnable onComplete, Consumer<Product> onEditItem) {
+                        Runnable onComplete, Consumer<OrderLine> onEditItem) {
         this.cart = cart != null ? cart : new Cart();
         this.onOrderMore = onOrderMore != null ? onOrderMore : () -> {};
         this.onStartOver = onStartOver != null ? onStartOver : () -> {};
         this.onComplete = onComplete != null ? onComplete : () -> {};
-        this.onEditItem = onEditItem != null ? onEditItem : product -> {};
+        this.onEditItem = onEditItem != null ? onEditItem : line -> {};
 
         setLayout(new BorderLayout());
         setBackground(UiColors.BACKGROUND);
-        setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        setBorder(BorderFactory.createEmptyBorder(22, 30, 28, 30));
 
         add(buildHeader(), BorderLayout.NORTH);
         add(buildCenter(), BorderLayout.CENTER);
         add(buildFooter(), BorderLayout.SOUTH);
 
-        showCartContents();
+        // Rebuild the list and replay the entrance every time the page is shown;
+        // hiding it puts everything back to invisible for the next visit.
+        addHierarchyListener(e -> {
+            if ((e.getChangeFlags() & HierarchyEvent.SHOWING_CHANGED) == 0) {
+                return;
+            }
+            if (isShowing()) {
+                showCartContents();
+                entrance.start();
+            } else {
+                entrance.reset();
+            }
+        });
     }
 
     /** Logo plus the page title. */
     private JPanel buildHeader() {
-        JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 3, 0));
+        JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
         header.setOpaque(false);
-        header.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
+        header.setBorder(BorderFactory.createEmptyBorder(0, 0, 33, 0));
 
-        header.add(new JLabel(UiKit.icon("public/assets/logo/logo-circle.png", 92, 92)));
+        logo = new FadeLabel(UiKit.icon("public/assets/logo/logo-circle.png", 96, 96));
+        header.add(logo);
 
-        JLabel title = new JLabel("Your Order");
-        title.setFont(bold.deriveFont(34f));
+        title = new FadeLabel("Your Order", null, SwingConstants.LEFT);
+        title.setFont(bold.deriveFont(30.5f));
         title.setForeground(UiColors.ORANGE);
+        title.setBorder(BorderFactory.createEmptyBorder(0, 17, 0, 0));
         header.add(title);
 
         return header;
@@ -97,7 +124,6 @@ public class CheckoutPage extends JPanel {
 
     /** Shown instead of the list while the cart is empty. */
     private JPanel buildEmptyState() {
-        JPanel placeholder = new PlaceholderPanel();
         placeholder.setLayout(new GridBagLayout());
         placeholder.setOpaque(false);
         placeholder.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
@@ -118,6 +144,7 @@ public class CheckoutPage extends JPanel {
     private JScrollPane buildListArea() {
         itemsPanel.setLayout(new BoxLayout(itemsPanel, BoxLayout.Y_AXIS));
         itemsPanel.setOpaque(false);
+        itemsPanel.setBorder(BorderFactory.createEmptyBorder(TOP_PADDING, 0, 0, 0)); // keeps the first card's top border visible
 
         JScrollPane scrollPane = new JScrollPane(itemsPanel);
         scrollPane.setBorder(null);
@@ -133,12 +160,13 @@ public class CheckoutPage extends JPanel {
         bar.setPreferredSize(new Dimension(26, 0));
         bar.setBorder(BorderFactory.createEmptyBorder(6, 2, 6, 8));
         bar.setBackground(UiColors.BACKGROUND);
+        SmoothScroller.install(scrollPane);
         return scrollPane;
     }
 
     /** Total on the left with Order More / Start Over, amount and Pay on the right. */
     private JPanel buildFooter() {
-        JPanel footer = new JPanel(new BorderLayout(16, 0));
+        JPanel footer = new JPanel(new BorderLayout(11, 0));
         footer.setOpaque(false);
 
         JPanel leftColumn = new JPanel();
@@ -161,21 +189,21 @@ public class CheckoutPage extends JPanel {
     }
 
     private JLabel buildTotalLabel() {
-        JLabel label = new JLabel("Total:");
-        label.setFont(bold.deriveFont(22f));
-        label.setForeground(UiColors.ORANGE);
-        label.setAlignmentX(Component.LEFT_ALIGNMENT);
-        label.setPreferredSize(new Dimension(207, 32));
-        label.setMaximumSize(new Dimension(207, 32));
-        return label;
+        totalCaption = new FadeLabel("Total:", null, SwingConstants.LEFT);
+        totalCaption.setFont(bold.deriveFont(20.5f));
+        totalCaption.setForeground(UiColors.ORANGE);
+        totalCaption.setAlignmentX(Component.LEFT_ALIGNMENT);
+        totalCaption.setPreferredSize(new Dimension(198, 32));
+        totalCaption.setMaximumSize(new Dimension(198, 32));
+        return totalCaption;
     }
 
     private JLabel buildAmountLabel() {
-        totalAmount.setFont(bold.deriveFont(22f));
+        totalAmount.setFont(bold.deriveFont(20.5f));
         totalAmount.setForeground(UiColors.ORANGE);
         totalAmount.setAlignmentX(Component.LEFT_ALIGNMENT);
-        totalAmount.setPreferredSize(new Dimension(310, 32));
-        totalAmount.setMaximumSize(new Dimension(310, 32));
+        totalAmount.setPreferredSize(new Dimension(296, 32));
+        totalAmount.setMaximumSize(new Dimension(296, 32));
         return totalAmount;
     }
 
@@ -187,45 +215,61 @@ public class CheckoutPage extends JPanel {
         column.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         JButton orderMoreButton = new RoundedButton("Order More", null,
-            UiColors.SURFACE, UiColors.HOVER_GREY, UiColors.BORDER);
-        orderMoreButton.setFont(regular.deriveFont(13f));
+            UiColors.SURFACE, UiColors.HOVER_GREY, UiColors.BROWN);
+        orderMoreButton.setFont(inter.deriveFont(12.5f));
         orderMoreButton.setForeground(UiColors.BROWN);
-        orderMoreButton.setPreferredSize(new Dimension(207, 57));
-        orderMoreButton.setMaximumSize(new Dimension(207, 57));
+        orderMoreButton.setPreferredSize(new Dimension(198, 59));
+        orderMoreButton.setMaximumSize(new Dimension(198, 59));
         orderMoreButton.addActionListener(e -> orderMore());
 
         JButton startOverButton = new RoundedButton("Start Over", null,
-            UiColors.SURFACE, UiColors.HOVER_GREY, UiColors.BORDER);
-        startOverButton.setFont(regular.deriveFont(13f));
+            UiColors.SURFACE, UiColors.HOVER_GREY, UiColors.BROWN);
+        startOverButton.setFont(inter.deriveFont(12.5f));
         startOverButton.setForeground(UiColors.BROWN);
-        startOverButton.setPreferredSize(new Dimension(207, 33));
-        startOverButton.setMaximumSize(new Dimension(207, 33));
+        startOverButton.setPreferredSize(new Dimension(198, 36));
+        startOverButton.setMaximumSize(new Dimension(198, 36));
         startOverButton.addActionListener(e -> startOver());
 
         column.add(orderMoreButton);
-        column.add(Box.createVerticalStrut(8));
         column.add(startOverButton);
         return column;
     }
 
     /** The big orange "Complete Order" button that leads to payment. */
     private JButton buildCompleteButton() {
-        JButton button = new RoundedButton(
-            "<html><center>"
-                + "<font face='" + bold.getFontName() + "' size='6'>Complete</font><br>"
-                + "<font face='" + bold.getFontName() + "' size='6'>Order</font>"
-                + "</center></html>",
-            UiKit.icon("public/assets/icons/check.png", 49, 49),
+        JButton button = new RoundedButton(null, null,
             UiColors.ORANGE, UiColors.ORANGE_HOVER, null);
-        button.setFont(bold.deriveFont(17f));
-        button.setForeground(UiColors.WHITE);
-        button.setIconTextGap(14);
-        // Same height as Order More + gap + Start Over, so both columns line up.
-        button.setPreferredSize(new Dimension(310, 98));
-        button.setMaximumSize(new Dimension(310, 98));
+
+        // Icon and two-line text as real components: an HTML label would
+        // ignore the Montserrat font and its size.
+        JPanel text = new JPanel();
+        text.setLayout(new BoxLayout(text, BoxLayout.Y_AXIS));
+        text.setOpaque(false);
+        text.add(buildCompleteLine("Complete"));
+        text.add(buildCompleteLine("Order"));
+
+        button.setLayout(new BoxLayout(button, BoxLayout.X_AXIS));
+        button.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0)); // centre on the face, above the shadow
+        button.add(Box.createHorizontalGlue());
+        button.add(new JLabel(UiKit.icon("public/assets/icons/check.png", 47, 47)));
+        button.add(Box.createHorizontalStrut(25));
+        button.add(text);
+        button.add(Box.createHorizontalGlue());
+
+        // Same height as Order More + Start Over, so both columns line up.
+        button.setPreferredSize(new Dimension(296, 95));
+        button.setMaximumSize(new Dimension(296, 95));
         button.setAlignmentX(Component.LEFT_ALIGNMENT);
         button.addActionListener(e -> completeOrder());
         return button;
+    }
+
+    private JLabel buildCompleteLine(String line) {
+        JLabel label = new JLabel(line);
+        label.setFont(bold.deriveFont(18f));
+        label.setForeground(UiColors.WHITE);
+        label.setAlignmentX(Component.CENTER_ALIGNMENT);
+        return label;
     }
 
     // ------------------------------------------------------------
@@ -275,7 +319,8 @@ public class CheckoutPage extends JPanel {
 
             if (outline != null) {
                 g2.setColor(outline);
-                g2.drawRoundRect(0, 0, getWidth() - 1, faceHeight - 1, ARC, ARC);
+                g2.setStroke(new BasicStroke(UiKit.BORDER_WIDTH));
+                g2.draw(new RoundRectangle2D.Double(0.5, 0.5, getWidth() - 1, faceHeight - 1, ARC, ARC));
             }
             g2.dispose();
 
@@ -287,7 +332,7 @@ public class CheckoutPage extends JPanel {
     }
 
     /** Dashed rounded outline drawn behind the "Your order is empty" message. */
-    private static class PlaceholderPanel extends JPanel {
+    private static class PlaceholderPanel extends FadeablePanel {
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
@@ -316,23 +361,36 @@ public class CheckoutPage extends JPanel {
     // BACKEND - keeping the list and total in step with the cart
     // ============================================================
 
-    /** The cart may have changed on the Menu or Edit Order pages. */
-    @Override
-    public void setVisible(boolean visible) {
-        super.setVisible(visible);
-        if (visible) {
-            showCartContents();
-        }
-    }
-
     /** Rebuilds the list of order cards from whatever is in the cart right now. */
     private void showCartContents() {
         itemsPanel.removeAll();
 
-        List<Map.Entry<Product, Integer>> entries = new ArrayList<>(cart.getItems().entrySet());
-        for (Map.Entry<Product, Integer> entry : entries) {
-            addOrderItem(buildCard(entry.getKey(), entry.getValue()));
+        // Entrance order: logo and title, then each card top to bottom.
+        entrance.clear();
+        entrance.add(alpha -> {
+            logo.setFade(alpha);
+            title.setFade(alpha);
+        });
+
+        List<OrderLine> lines = cart.getLines();
+        for (OrderLine line : lines) {
+            OrderItemCard card = buildCard(line);
+            addOrderItem(card);
+            entrance.add(card::setFade);
         }
+
+        // The empty box fades in only when there is nothing in the order;
+        // otherwise it must stay fully visible for when the last item is removed.
+        placeholder.setFade(1f);
+        if (lines.isEmpty()) {
+            entrance.add(placeholder::setFade);
+        }
+
+        // Last: the total and its price.
+        entrance.add(alpha -> {
+            totalCaption.setFade(alpha);
+            totalAmount.setFade(alpha);
+        });
 
         itemsPanel.revalidate();
         itemsPanel.repaint();
@@ -341,20 +399,21 @@ public class CheckoutPage extends JPanel {
     }
 
     /** One line of the order: picture, quantity controls, edit and remove. */
-    private OrderItemCard buildCard(Product product, int quantity) {
+    private OrderItemCard buildCard(OrderLine line) {
         OrderItemCard card = new OrderItemCard(
-            product,
-            quantity,
+            line.getProduct(),
+            line.getQuantity(),
+            () -> cart.maxQuantity(line),
             newQuantity -> {
                 // The + / - circles change the real cart, so the Menu total stays in sync too.
-                cart.setQuantity(product, newQuantity);
+                cart.setQuantity(line, newQuantity);
                 updateTotal();
             },
-            () -> editItem(product),
+            () -> editItem(line),
             null // wired up below, once the card exists
         );
         // Each card removes only itself, not the whole list.
-        card.setOnRemove(() -> removeItem(product, card));
+        card.setOnRemove(() -> removeItem(line, card));
         return card;
     }
 
@@ -399,13 +458,13 @@ public class CheckoutPage extends JPanel {
     // ------------------------------------------------------------
 
     /** "Edit Meal" on a card: KioskMain shows the Edit Order page. */
-    private void editItem(Product product) {
-        onEditItem.accept(product);
+    private void editItem(OrderLine line) {
+        onEditItem.accept(line);
     }
 
     /** The trash icon on a card: drop that line, take it off the list and refresh the total. */
-    private void removeItem(Product product, OrderItemCard card) {
-        cart.setQuantity(product, 0);
+    private void removeItem(OrderLine line, OrderItemCard card) {
+        cart.remove(line);
         removeOrderItem(card);
         updateTotal();
     }

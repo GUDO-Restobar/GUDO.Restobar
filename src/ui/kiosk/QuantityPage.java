@@ -3,6 +3,7 @@ package ui.kiosk;
 import java.awt.*;
 import javax.swing.*;
 import util.Cart;
+import util.OrderLine;
 import util.Inventory;
 import util.Product;
 import util.UiColors;
@@ -27,6 +28,8 @@ abstract class QuantityPage extends JPanel {
     /** The pieces of the pattern the subclasses need to see. */
     protected final Product product;
     protected final Cart cart;
+    /** The order line being edited; null when a new line is being added. */
+    protected final OrderLine line;
     /** Runs after the real cart has been updated. */
     protected final Runnable onSaved;
     /** Runs when the customer backs out without changing anything. */
@@ -69,8 +72,9 @@ abstract class QuantityPage extends JPanel {
     /** The heading shown next to the logo. */
     protected abstract String pageTitle();
 
-    protected QuantityPage(Product product, Cart cart, Runnable onSaved, Runnable onCancel) {
+    protected QuantityPage(Product product, OrderLine line, Cart cart, Runnable onSaved, Runnable onCancel) {
         this.product = product;
+        this.line = line;
         this.cart = cart;
         this.onSaved = onSaved != null ? onSaved : () -> {};
         this.onCancel = onCancel != null ? onCancel : () -> {};

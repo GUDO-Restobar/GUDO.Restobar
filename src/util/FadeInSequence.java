@@ -40,6 +40,12 @@ public class FadeInSequence {
         steps.add(step);
     }
 
+    /** Forgets every element, e.g. before a page rebuilds its content. */
+    public void clear() {
+        timer.stop();
+        steps.clear();
+    }
+
     /** Hides every element, then fades them in again from the first one. */
     public void start() {
         showAll(0f);

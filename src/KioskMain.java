@@ -127,7 +127,7 @@ public class KioskMain extends JFrame {
             () -> showScreen(START_OVER_SCREEN),  // "Start Over"
             () -> {                               // "Complete Order"
                 // Nothing to pay for if the order is empty.
-                if (!cart.getItems().isEmpty()) {
+                if (!cart.isEmpty()) {
                     showScreen(PAYMENT_OPTION_SCREEN);
                 }
             },
@@ -293,13 +293,13 @@ public class KioskMain extends JFrame {
         screenPanel.repaint();
     }
 
-    /** Opens the Edit Order page for a meal that is already in the order. */
-    private void showEditOrder(Product product) {
+    /** Opens the Edit Order page for one line that is already in the order. */
+    private void showEditOrder(OrderLine line) {
         reloadStock();
         if (editOrderPage != null) screenPanel.remove(editOrderPage);
 
         editOrderPage = new EditOrder(
-            product,
+            line,
             cart,
             this::showOrderEdited,
             () -> showScreen(CHECKOUT_SCREEN)

@@ -31,7 +31,6 @@ public final class Inventory {
 
     /** Pieces of this product that are in stock and not yet in the given cart. */
     public static int getAvailable(Product product, Cart cart) {
-        int inCart = cart.getItems().getOrDefault(product, 0);
-        return Math.max(0, getStock(product) - inCart);
+        return Math.max(0, getStock(product) - cart.quantityOf(product));
     }
 }
