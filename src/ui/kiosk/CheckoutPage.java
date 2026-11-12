@@ -54,6 +54,8 @@ public class CheckoutPage extends JPanel {
     private final JPanel centerPanel = new JPanel(centerLayout);
     private final JPanel itemsPanel = new ScrollablePanel();
     private final FadeLabel totalAmount = new FadeLabel("\u20B10.00", null, SwingConstants.LEFT);
+    /** Greyed out and unclickable while the order is empty. */
+    private JButton completeButton;
 
     // Entrance animation: logo and title, the order cards (or the empty box),
     // then the total. The bottom buttons are always there.
@@ -239,6 +241,7 @@ public class CheckoutPage extends JPanel {
     private JButton buildCompleteButton() {
         JButton button = new RoundedButton(null, null,
             UiColors.ORANGE, UiColors.ORANGE_HOVER, null);
+        completeButton = button;
 
         // Icon and two-line text as real components: an HTML label would
         // ignore the Montserrat font and its size.
@@ -297,9 +300,15 @@ public class CheckoutPage extends JPanel {
             setFocusPainted(false);
             setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
             addMouseListener(new MouseAdapter() {
-                @Override public void mouseEntered(MouseEvent e) { setBackground(hover); }
+                @Override public void mouseEntered(MouseEvent e) { if (isEnabled()) setBackground(hover); }
                 @Override public void mouseExited(MouseEvent e) { setBackground(base); }
             });
+        }
+
+        @Override
+        public void setEnabled(boolean enabled) {
+            super.setEnabled(enabled);
+            setCursor(Cursor.getPredefinedCursor(enabled ? Cursor.HAND_CURSOR : Cursor.DEFAULT_CURSOR));
         }
 
         @Override
@@ -314,7 +323,7 @@ public class CheckoutPage extends JPanel {
                 g2.fillRoundRect(0, offset, getWidth(), faceHeight, ARC, ARC);
             }
 
-            g2.setColor(getBackground());
+            g2.setColor(isEnabled() ? getBackground() : UiColors.DISABLED);
             g2.fillRoundRect(0, 0, getWidth(), faceHeight, ARC, ARC);
 
             if (outline != null) {
@@ -451,6 +460,7 @@ public class CheckoutPage extends JPanel {
 
     private void updateTotal() {
         totalAmount.setText(UiKit.peso(cart.getTotal()));
+        completeButton.setEnabled(!cart.isEmpty()); // nothing to pay for
     }
 
     // ------------------------------------------------------------
