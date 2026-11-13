@@ -280,6 +280,8 @@ public class KioskMain extends JFrame {
         addOrderPage = new AddOrder(
             product,
             cart,
+            menuPage.getExtras(),
+            menuPage.getFavorites(),
             () -> { // saved: the cart changed, so refresh the total and confirm
                 menuPage.setTotal(cart.getTotal());
                 showOrderAdded();
@@ -314,6 +316,8 @@ public class KioskMain extends JFrame {
         editOrderPage = new EditOrder(
             line,
             cart,
+            menuPage.getExtras(),
+            menuPage.getFavorites(),
             this::showOrderEdited,
             () -> showScreen(CHECKOUT_SCREEN)
         );

@@ -5,6 +5,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.geom.Line2D;
 import java.awt.geom.RoundRectangle2D;
+import java.util.List;
 import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
 import javax.swing.*;
@@ -36,6 +37,8 @@ public class OrderItemCard extends FadeablePanel {
     private static final String CONFIRM_TEXT = "Are you sure?";
 
     private static final int CARD_HEIGHT = 170;
+    /** Extra room the card gains for every add-on row beyond the first two. */
+    private static final int ADD_ON_ROW_HEIGHT = 15;
     private static final int IMAGE_SIZE = 124;
     /** Free space between the picture and the left edge of the card. */
     private static final int IMAGE_MARGIN = 14;
@@ -69,6 +72,8 @@ public class OrderItemCard extends FadeablePanel {
     private final Product product;
     private final IntSupplier maxQuantity;
     private final IntConsumer onQuantityChange;
+    private final List<AddOn> extras;
+    private final List<AddOn> favorites;
     private int quantity;
     private JLabel quantityLabel;
     private JLabel priceLabel;
@@ -78,6 +83,8 @@ public class OrderItemCard extends FadeablePanel {
      * @param product          the product this card shows
      * @param quantity         how many of it are in the order
      * @param maxQuantity      the most this line may hold (its share of the stock)
+     * @param extras           the extras picked for this line (shown on the left)
+     * @param favorites        the Gudo's Favorites picked for this line (shown on the right)
      * @param onQuantityChange called with the new quantity after the + or - circle is pressed
      * @param onEdit           runs when "Edit Meal" is pressed
      * @param onRemove         runs on the second press of the trash icon
@@ -85,17 +92,8 @@ public class OrderItemCard extends FadeablePanel {
     public OrderItemCard(Product product,
                          int quantity,
                          IntSupplier maxQuantity,
-                         IntConsumer onQuantityChange,
-                         Runnable onEdit,
-                         Runnable onRemove) {
-        this(product, quantity, maxQuantity, new String[0], new String[0], onQuantityChange, onEdit, onRemove);
-    }
-
-    public OrderItemCard(Product product,
-                         int quantity,
-                         IntSupplier maxQuantity,
-                         String[] leftAddOns,
-                         String[] rightAddOns,
+                         List<AddOn> extras,
+                         List<AddOn> favorites,
                          IntConsumer onQuantityChange,
                          Runnable onEdit,
                          Runnable onRemove) {
@@ -103,9 +101,14 @@ public class OrderItemCard extends FadeablePanel {
         this.product = product;
         this.quantity = Math.max(1, quantity);
         this.maxQuantity = maxQuantity;
+        this.extras = extras != null ? extras : List.of();
+        this.favorites = favorites != null ? favorites : List.of();
         this.onQuantityChange = onQuantityChange != null ? onQuantityChange : q -> {};
         Runnable edit = onEdit != null ? onEdit : () -> {};
         this.onRemove = onRemove != null ? onRemove : () -> {};
+
+        int addOnRows = Math.max(this.extras.size(), this.favorites.size());
+        int height = CARD_HEIGHT + Math.max(0, addOnRows - 2) * ADD_ON_ROW_HEIGHT;
 
         setLayout(new BorderLayout());
         setOpaque(false);
@@ -115,11 +118,11 @@ public class OrderItemCard extends FadeablePanel {
         confirmTimer.setRepeats(false);
 
         add(buildImage(product.getImagePath()), BorderLayout.WEST);
-        add(buildInfo(product.getName(), leftAddOns, rightAddOns, edit), BorderLayout.CENTER);
+        add(buildInfo(product.getName(), this.extras, this.favorites, edit), BorderLayout.CENTER);
         add(buildRightColumn(), BorderLayout.EAST);
 
-        setPreferredSize(new Dimension(760, CARD_HEIGHT));
-        setMaximumSize(new Dimension(Integer.MAX_VALUE, CARD_HEIGHT));
+        setPreferredSize(new Dimension(760, height));
+        setMaximumSize(new Dimension(Integer.MAX_VALUE, height));
     }
 
     /** Applies a +1 / -1 change. The quantity never drops below 1; the trash icon removes the item. */
@@ -130,9 +133,26 @@ public class OrderItemCard extends FadeablePanel {
         }
         quantity = updated;
         quantityLabel.setText(String.valueOf(quantity));
-        priceLabel.setText(UiKit.peso(product.getPrice() * quantity));
+        updatePrice();
         updatePlusButton();
         onQuantityChange.accept(quantity);
+    }
+
+    /** The meal plus everything picked for this line. */
+    private double subtotal() {
+        double total = product.getPrice() * quantity;
+        for (AddOn extra : extras) {
+            total += extra.getSubtotal();
+        }
+        for (AddOn favorite : favorites) {
+            total += favorite.getSubtotal();
+        }
+        return total;
+    }
+
+    /** Keeps the price in step with the quantity. */
+    private void updatePrice() {
+        priceLabel.setText(UiKit.peso(subtotal()));
     }
 
     /** The most this line can have: its share of the stock. */
@@ -159,7 +179,7 @@ public class OrderItemCard extends FadeablePanel {
     }
 
     private JPanel buildInfo(String name,
-                             String[] leftAddOns, String[] rightAddOns,
+                             List<AddOn> leftAddOns, List<AddOn> rightAddOns,
                              Runnable onEdit) {
         JPanel info = new JPanel(new BorderLayout(0, 8));
         info.setOpaque(false);
@@ -201,7 +221,7 @@ public class OrderItemCard extends FadeablePanel {
         return header;
     }
 
-    private JPanel buildAddOns(String[] leftAddOns, String[] rightAddOns) {
+    private JPanel buildAddOns(List<AddOn> leftAddOns, List<AddOn> rightAddOns) {
         JPanel columns = new JPanel();
         columns.setLayout(new BoxLayout(columns, BoxLayout.X_AXIS));
         columns.setOpaque(false);
@@ -213,23 +233,21 @@ public class OrderItemCard extends FadeablePanel {
         return columns;
     }
 
-    private JPanel buildAddOnColumn(String[] addOns) {
+    private JPanel buildAddOnColumn(List<AddOn> addOns) {
         JPanel column = new JPanel();
         column.setLayout(new BoxLayout(column, BoxLayout.Y_AXIS));
         column.setOpaque(false);
         column.setAlignmentY(Component.TOP_ALIGNMENT);
-        column.setPreferredSize(new Dimension(240, 100));
+        column.setPreferredSize(new Dimension(240, Math.max(100, addOns.size() * 19)));
         column.setMaximumSize(new Dimension(240, Integer.MAX_VALUE));
 
-        if (addOns != null) {
-            for (String addOn : addOns) {
-                JLabel label = new JLabel("\u2022 " + addOn);
-                label.setFont(regular.deriveFont(11f));
-                label.setForeground(UiColors.TEXT_MUTED);
-                label.setAlignmentX(Component.LEFT_ALIGNMENT);
-                label.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0));
-                column.add(label);
-            }
+        for (AddOn addOn : addOns) {
+            JLabel label = new JLabel("\u2022 " + addOn.getLabel());
+            label.setFont(regular.deriveFont(11f));
+            label.setForeground(UiColors.TEXT_MUTED);
+            label.setAlignmentX(Component.LEFT_ALIGNMENT);
+            label.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0));
+            column.add(label);
         }
         column.add(Box.createVerticalGlue());
         return column;
@@ -254,7 +272,7 @@ public class OrderItemCard extends FadeablePanel {
         column.setOpaque(false);
         column.setBorder(BorderFactory.createEmptyBorder(0, PRICE_GAP, 0, 0));
 
-        priceLabel = new JLabel(UiKit.peso(product.getPrice() * quantity));
+        priceLabel = new JLabel(UiKit.peso(subtotal()));
         priceLabel.setFont(bold.deriveFont(TEXT_SIZE));
         priceLabel.setForeground(UiColors.ORANGE);
 

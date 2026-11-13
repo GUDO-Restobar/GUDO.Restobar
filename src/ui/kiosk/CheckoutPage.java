@@ -349,6 +349,8 @@ public class CheckoutPage extends JPanel {
             line.getProduct(),
             line.getQuantity(),
             () -> cart.maxQuantity(line),
+            line.getExtras(),
+            line.getFavorites(),
             newQuantity -> {
                 // The + / - circles change the real cart, so the Menu total stays in sync too.
                 cart.setQuantity(line, newQuantity);

@@ -1,6 +1,7 @@
 package ui.kiosk;
 
 import java.awt.*;
+import java.util.List;
 import javax.swing.*;
 import util.Cart;
 import util.Inventory;
@@ -8,7 +9,8 @@ import util.Product;
 
 /**
  * "Add Something Extra to Your Meal": shows the tapped product, lets the
- * customer pick a quantity and puts it into the cart.
+ * customer pick a quantity, extras and Gudo's Favorites, and puts it all into
+ * the cart as one new order line.
  *
  * The shared layout and quantity logic live in {@link QuantityPage}; this
  * class only fills in what is different about adding a new meal.
@@ -17,12 +19,14 @@ import util.Product;
  */
 public class AddOrder extends QuantityPage {
 
-    public AddOrder(Product product, Cart cart, Runnable onSaved, Runnable onCancel) {
-        super(product, null, cart, onSaved, onCancel);
+    public AddOrder(Product product, Cart cart,
+                    List<Product> extras, List<Product> favorites,
+                    Runnable onSaved, Runnable onCancel) {
+        super(product, null, cart, extras, favorites, onSaved, onCancel);
     }
 
-    @Override protected String pageTitle() {
-        return "<html>Add Something Extra<br>to Your Meal</html>";
+    @Override protected String[] pageTitleLines() {
+        return new String[] {"Add Something Extra", "to Your Meal"};
     }
 
     /**
@@ -37,14 +41,9 @@ public class AddOrder extends QuantityPage {
         return "Add to Order";
     }
 
-    /** Always a new line, even if the product is already in the order. */
+    /** Always a new line, carrying this page's extras and favorites. */
     @Override protected void commitOrder() {
-        cart.add(product, quantity);
-    }
-
-    /** Nothing extra under the placeholder sections. */
-    @Override protected void addDetailsFooter(JPanel details) {
-        details.add(Box.createVerticalGlue());
+        cart.add(product, quantity, selectedExtras(), selectedFavorites());
     }
 
     /** Cancel on the left, the orange "Add to Order" button on the right. */

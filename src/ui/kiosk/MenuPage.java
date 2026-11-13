@@ -121,6 +121,31 @@ public class MenuPage extends JPanel {
         resetIntro();               // nothing animated is visible before the first show
     }
 
+    // ------------------------------------------------------------
+    // Menu data shared with the Add / Edit Order pages
+    // ------------------------------------------------------------
+
+    /** The Extras-category items the order pages offer as paid add-ons. */
+    public List<Product> getExtras() {
+        return menu.getOrDefault("Extras", List.of());
+    }
+
+    /** The three Gudo's Favorites shown under every meal. */
+    public List<Product> getFavorites() {
+        String[] names = {"Quiburger", "LinkedHash Brown", "Java Milkshake"};
+        List<Product> picked = new ArrayList<>();
+        for (String name : names) {
+            for (List<Product> products : menu.values()) {
+                for (Product product : products) {
+                    if (product.getName().equals(name)) {
+                        picked.add(product);
+                    }
+                }
+            }
+        }
+        return picked;
+    }
+
     /** Banner on top, the product list in the middle, the total bar at the bottom. */
     private JPanel buildContent() {
         JPanel content = new JPanel(new BorderLayout());

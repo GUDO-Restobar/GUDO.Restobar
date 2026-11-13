@@ -19,13 +19,44 @@ public class Cart implements Prototype<Cart> {
     private final List<OrderLine> lines = new ArrayList<>();
     private final List<Runnable> listeners = new ArrayList<>();
 
-    /** Adds a new line, capped by the stock not yet used by other lines. */
-    public void add(Product product, int quantity) {
+    /** Adds a new line without extras, capped by the stock not yet used by other lines. */
+    public OrderLine add(Product product, int quantity) {
+        return add(product, quantity, List.of(), List.of());
+    }
+
+    /**
+     * Adds a new line with its own extras and favorites, capped by the stock
+     * not yet used by other lines. Returns the new line, or null when there is
+     * no stock left.
+     */
+    public OrderLine add(Product product, int quantity,
+                         List<AddOn> extras, List<AddOn> favorites) {
         int capped = Math.min(quantity, Inventory.getAvailable(product, this));
         if (capped <= 0) {
+            return null;
+        }
+        OrderLine line = new OrderLine(product, capped);
+        line.setAddOns(extras, favorites);
+        lines.add(line);
+        fireChanged();
+        return line;
+    }
+
+    /** Changes a line's quantity and add-ons in one step; 0 (or less) removes it. */
+    public void updateLine(OrderLine line, int quantity,
+                           List<AddOn> extras, List<AddOn> favorites) {
+        int index = lines.indexOf(line);
+        if (index < 0) {
             return;
         }
-        lines.add(new OrderLine(product, capped));
+        int capped = Math.min(quantity, maxQuantity(line));
+        if (capped <= 0) {
+            lines.remove(index);
+        } else {
+            OrderLine target = lines.get(index);
+            target.setQuantity(capped);
+            target.setAddOns(extras, favorites);
+        }
         fireChanged();
     }
 
