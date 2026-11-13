@@ -4,6 +4,8 @@ package ui.kiosk;
 // IMPORTS
 // ============================================================
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import javax.swing.*;
 import util.*;
 
@@ -21,10 +23,17 @@ public class PaymentOption extends FadeInPage {
     // FRONTEND - heading, payment cards and the back button
     // ============================================================
 
+    /** How long one element takes to appear, and the delay between elements. */
+    private static final int FADE_MILLIS = 125;
+    private static final int STAGGER_MILLIS = 25;
+
     /** Runs once a payment method has been chosen. */
     private final Runnable onPaymentSelected;
     /** Runs when the customer wants to return to the checkout page. */
     private final Runnable onBack;
+
+    /** The entrance animation; elements fade in in the order they are added. */
+    private final FadeInSequence entrance = new FadeInSequence(this, FADE_MILLIS, STAGGER_MILLIS);
 
     public PaymentOption(Runnable onPaymentSelected, Runnable onBack) {
         this.onPaymentSelected = onPaymentSelected != null ? onPaymentSelected : () -> {};
