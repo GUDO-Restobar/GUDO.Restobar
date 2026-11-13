@@ -3,8 +3,9 @@ package util;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.geom.Line2D;
 import java.awt.geom.RoundRectangle2D;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
 import javax.swing.*;
@@ -13,8 +14,9 @@ import javax.swing.*;
  * One line of the order on the checkout screen.
  *
  * Main purpose: reusable UI component - shows the product picture, name,
- * line total, the - / quantity / + circles, an "Edit Meal" button and a trash
- * icon. It asks the owner what "edit" and "remove" mean through its
+ * line total, the - / quantity / + circles, the add-ons (extras on the left,
+ * favorites on the right), an "Edit Meal" button and a trash icon. The card
+ * grows taller when a line has many add-ons. It asks the owner what "edit" and "remove" mean through its
  * constructor callbacks, so CheckoutPage stays in charge of the cart.
  *
  * The trash icon needs two presses: the first one only shows "Are you sure?".
@@ -35,7 +37,13 @@ public class OrderItemCard extends FadeablePanel {
     /** Shown next to the trash icon after the first press. */
     private static final String CONFIRM_TEXT = "Are you sure?";
 
+    /** The shortest a card gets: it must still fit the picture. */
     private static final int CARD_HEIGHT = 170;
+    /** Everything in the card except the add-on columns: borders, name row, edit button, gaps. */
+    private static final int CHROME_HEIGHT = 106;
+    private static final int ADDON_ROW_HEIGHT = 18;
+    private static final int ADDON_COLUMN_WIDTH = 130;
+    private static final int ADDON_GAP = 24;
     private static final int IMAGE_SIZE = 124;
     /** Free space between the picture and the left edge of the card. */
     private static final int IMAGE_MARGIN = 14;
@@ -66,6 +74,7 @@ public class OrderItemCard extends FadeablePanel {
     /** Runs on the second press of the trash icon. */
     private Runnable onRemove = () -> {};
 
+    private final OrderLine line;
     private final Product product;
     private final IntSupplier maxQuantity;
     private final IntConsumer onQuantityChange;
@@ -75,37 +84,28 @@ public class OrderItemCard extends FadeablePanel {
     private CircleButton plusButton;
 
     /**
-     * @param product          the product this card shows
-     * @param quantity         how many of it are in the order
+     * @param line             the order line this card shows (read live, so totals stay current)
      * @param maxQuantity      the most this line may hold (its share of the stock)
      * @param onQuantityChange called with the new quantity after the + or - circle is pressed
      * @param onEdit           runs when "Edit Meal" is pressed
      * @param onRemove         runs on the second press of the trash icon
      */
-    public OrderItemCard(Product product,
-                         int quantity,
+    public OrderItemCard(OrderLine line,
                          IntSupplier maxQuantity,
                          IntConsumer onQuantityChange,
                          Runnable onEdit,
                          Runnable onRemove) {
-        this(product, quantity, maxQuantity, new String[0], new String[0], onQuantityChange, onEdit, onRemove);
-    }
 
-    public OrderItemCard(Product product,
-                         int quantity,
-                         IntSupplier maxQuantity,
-                         String[] leftAddOns,
-                         String[] rightAddOns,
-                         IntConsumer onQuantityChange,
-                         Runnable onEdit,
-                         Runnable onRemove) {
-
-        this.product = product;
-        this.quantity = Math.max(1, quantity);
+        this.line = line;
+        this.product = line.getProduct();
+        this.quantity = Math.max(1, line.getQuantity());
         this.maxQuantity = maxQuantity;
         this.onQuantityChange = onQuantityChange != null ? onQuantityChange : q -> {};
         Runnable edit = onEdit != null ? onEdit : () -> {};
         this.onRemove = onRemove != null ? onRemove : () -> {};
+
+        List<String> extras = extraLabels(line);
+        List<String> favorites = favoriteLabels(line);
 
         setLayout(new BorderLayout());
         setOpaque(false);
@@ -115,11 +115,33 @@ public class OrderItemCard extends FadeablePanel {
         confirmTimer.setRepeats(false);
 
         add(buildImage(product.getImagePath()), BorderLayout.WEST);
-        add(buildInfo(product.getName(), leftAddOns, rightAddOns, edit), BorderLayout.CENTER);
+        add(buildInfo(product.getName(), extras, favorites, edit), BorderLayout.CENTER);
         add(buildRightColumn(), BorderLayout.EAST);
 
-        setPreferredSize(new Dimension(760, CARD_HEIGHT));
-        setMaximumSize(new Dimension(Integer.MAX_VALUE, CARD_HEIGHT));
+        int rows = Math.max(extras.size(), favorites.size());
+        int height = Math.max(CARD_HEIGHT, CHROME_HEIGHT + rows * ADDON_ROW_HEIGHT);
+        setPreferredSize(new Dimension(760, height));
+        setMaximumSize(new Dimension(Integer.MAX_VALUE, height));
+    }
+
+    /** Left column: the extras, then extra water and cutlery. */
+    private static List<String> extraLabels(OrderLine line) {
+        List<String> labels = new ArrayList<>();
+        line.getExtras().forEach((extra, amount) -> labels.add(extra.getName() + " x" + amount));
+        if (line.isWater()) {
+            labels.add("Extra Water");
+        }
+        if (line.isCutlery()) {
+            labels.add("Cutlery");
+        }
+        return labels;
+    }
+
+    /** Right column: the favorites. */
+    private static List<String> favoriteLabels(OrderLine line) {
+        List<String> labels = new ArrayList<>();
+        line.getFavorites().forEach((favorite, amount) -> labels.add(favorite.getName() + " x" + amount));
+        return labels;
     }
 
     /** Applies a +1 / -1 change. The quantity never drops below 1; the trash icon removes the item. */
@@ -130,9 +152,9 @@ public class OrderItemCard extends FadeablePanel {
         }
         quantity = updated;
         quantityLabel.setText(String.valueOf(quantity));
-        priceLabel.setText(UiKit.peso(product.getPrice() * quantity));
         updatePlusButton();
-        onQuantityChange.accept(quantity);
+        onQuantityChange.accept(quantity);                      // the owner updates the line first...
+        priceLabel.setText(UiKit.peso(line.getSubtotal()));     // ...so the price includes the add-ons
     }
 
     /** The most this line can have: its share of the stock. */
@@ -159,7 +181,7 @@ public class OrderItemCard extends FadeablePanel {
     }
 
     private JPanel buildInfo(String name,
-                             String[] leftAddOns, String[] rightAddOns,
+                             List<String> leftAddOns, List<String> rightAddOns,
                              Runnable onEdit) {
         JPanel info = new JPanel(new BorderLayout(0, 8));
         info.setOpaque(false);
@@ -179,9 +201,9 @@ public class OrderItemCard extends FadeablePanel {
         quantityLabel.setFont(bold.deriveFont(16f));
         quantityLabel.setForeground(UiColors.ORANGE);
 
-        CircleButton minus = new CircleButton(false);
+        CircleButton minus = new CircleButton(false, 15);
         minus.addActionListener(e -> changeQuantity(-1));
-        CircleButton plus = new CircleButton(true);
+        CircleButton plus = new CircleButton(true, 15);
         plus.addActionListener(e -> changeQuantity(1));
         plusButton = plus;
         updatePlusButton();
@@ -201,35 +223,34 @@ public class OrderItemCard extends FadeablePanel {
         return header;
     }
 
-    private JPanel buildAddOns(String[] leftAddOns, String[] rightAddOns) {
+    private JPanel buildAddOns(List<String> leftAddOns, List<String> rightAddOns) {
         JPanel columns = new JPanel();
         columns.setLayout(new BoxLayout(columns, BoxLayout.X_AXIS));
         columns.setOpaque(false);
 
         columns.add(buildAddOnColumn(leftAddOns));
-        columns.add(Box.createHorizontalStrut(40));
+        columns.add(Box.createHorizontalStrut(ADDON_GAP));
         columns.add(buildAddOnColumn(rightAddOns));
         columns.add(Box.createHorizontalGlue());
         return columns;
     }
 
-    private JPanel buildAddOnColumn(String[] addOns) {
+    private JPanel buildAddOnColumn(List<String> addOns) {
         JPanel column = new JPanel();
         column.setLayout(new BoxLayout(column, BoxLayout.Y_AXIS));
         column.setOpaque(false);
         column.setAlignmentY(Component.TOP_ALIGNMENT);
-        column.setPreferredSize(new Dimension(240, 100));
-        column.setMaximumSize(new Dimension(240, Integer.MAX_VALUE));
+        column.setPreferredSize(new Dimension(ADDON_COLUMN_WIDTH, addOns.size() * ADDON_ROW_HEIGHT));
+        column.setMaximumSize(new Dimension(ADDON_COLUMN_WIDTH, Integer.MAX_VALUE));
 
-        if (addOns != null) {
-            for (String addOn : addOns) {
-                JLabel label = new JLabel("\u2022 " + addOn);
-                label.setFont(regular.deriveFont(11f));
-                label.setForeground(UiColors.TEXT_MUTED);
-                label.setAlignmentX(Component.LEFT_ALIGNMENT);
-                label.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0));
-                column.add(label);
-            }
+        for (String addOn : addOns) {
+            JLabel label = new JLabel("\u2022 " + addOn);
+            label.setFont(regular.deriveFont(11f));
+            label.setForeground(UiColors.TEXT_MUTED);
+            label.setAlignmentX(Component.LEFT_ALIGNMENT);
+            label.setToolTipText(addOn);
+            label.setBorder(BorderFactory.createEmptyBorder(0, 0, 4, 0));
+            column.add(label);
         }
         column.add(Box.createVerticalGlue());
         return column;
@@ -254,7 +275,7 @@ public class OrderItemCard extends FadeablePanel {
         column.setOpaque(false);
         column.setBorder(BorderFactory.createEmptyBorder(0, PRICE_GAP, 0, 0));
 
-        priceLabel = new JLabel(UiKit.peso(product.getPrice() * quantity));
+        priceLabel = new JLabel(UiKit.peso(line.getSubtotal()));
         priceLabel.setFont(bold.deriveFont(TEXT_SIZE));
         priceLabel.setForeground(UiColors.ORANGE);
 
@@ -496,53 +517,6 @@ public class OrderItemCard extends FadeablePanel {
             for (String line : lines) {
                 g2.drawString(line, 0, y);
                 y += fm.getHeight();
-            }
-            g2.dispose();
-        }
-    }
-
-    /** Small orange circle holding a white minus or plus. */
-    private static class CircleButton extends JButton {
-        private static final int SIZE = 15;
-
-        private final boolean plus;
-        private boolean hover;
-
-        CircleButton(boolean plus) {
-            this.plus = plus;
-            setPreferredSize(new Dimension(SIZE, SIZE));
-            setOpaque(false);
-            setContentAreaFilled(false);
-            setBorderPainted(false);
-            setFocusPainted(false);
-            setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-            addMouseListener(new MouseAdapter() {
-                @Override public void mouseEntered(MouseEvent e) { hover = true; repaint(); }
-                @Override public void mouseExited(MouseEvent e) { hover = false; repaint(); }
-            });
-        }
-
-        @Override
-        public void setEnabled(boolean enabled) {
-            super.setEnabled(enabled);
-            setCursor(Cursor.getPredefinedCursor(enabled ? Cursor.HAND_CURSOR : Cursor.DEFAULT_CURSOR));
-        }
-
-        @Override
-        protected void paintComponent(Graphics g) {
-            Graphics2D g2 = (Graphics2D) g.create();
-            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-            g2.setColor(!isEnabled() ? UiColors.DISABLED
-                : hover ? UiColors.ORANGE_HOVER : UiColors.ORANGE);
-            g2.fillOval(0, 0, SIZE, SIZE);
-
-            double mid = SIZE / 2.0;
-            g2.setColor(UiColors.WHITE);
-            g2.setStroke(new BasicStroke(1.6f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
-            g2.draw(new Line2D.Double(4, mid, SIZE - 4, mid));
-            if (plus) {
-                g2.draw(new Line2D.Double(mid, 4, mid, SIZE - 4));
             }
             g2.dispose();
         }

@@ -9,9 +9,9 @@ import java.util.*;
  * screen reads the total from here and every screen mutates it through these
  * methods, so the menu, the cart and the checkout page always agree.
  *
- * Adding a product always creates a NEW line, even if the product is already
- * in the order, so each line can later carry its own extras. Stock is shared
- * by all lines of the same product.
+ * Adding a meal always creates a NEW line, even if the meal is already in
+ * the order, so each line carries its own extras and favorites. Stock is shared
+ * by every line, add-ons included.
  *
  * Listeners fire on every change so the screens can redraw themselves.
  */
@@ -19,14 +19,36 @@ public class Cart implements Prototype<Cart> {
     private final List<OrderLine> lines = new ArrayList<>();
     private final List<Runnable> listeners = new ArrayList<>();
 
-    /** Adds a new line, capped by the stock not yet used by other lines. */
-    public void add(Product product, int quantity) {
-        int capped = Math.min(quantity, Inventory.getAvailable(product, this));
-        if (capped <= 0) {
-            return;
+    /** Adds a finished line. The cart keeps its own copy, so adding the same line twice does nothing. */
+    public void add(OrderLine line) {
+        if (!lines.contains(line)) {
+            lines.add(line.copy());
+            fireChanged();
         }
-        lines.add(new OrderLine(product, capped));
-        fireChanged();
+    }
+
+    /** Replaces the line that has the same id with the edited copy. */
+    public void update(OrderLine edited) {
+        int index = lines.indexOf(edited);
+        if (index >= 0) {
+            lines.set(index, edited.copy());
+            fireChanged();
+        }
+    }
+
+    /**
+     * How many more pieces of a product the working line may still take:
+     * the stock, minus what every other line uses, minus what the working
+     * line already uses. The working line need not be in the cart yet.
+     */
+    public int remaining(OrderLine working, Product product) {
+        int used = working.countOf(product);
+        for (OrderLine line : lines) {
+            if (!line.equals(working)) {
+                used += line.countOf(product);
+            }
+        }
+        return Inventory.getStock(product) - used;
     }
 
     /** Sets a line's quantity; 0 (or less) removes it. Never above its share of the stock. */
@@ -59,12 +81,9 @@ public class Cart implements Prototype<Cart> {
         return lines.isEmpty();
     }
 
-    /** How many pieces of this product are in the order, across all its lines. */
+    /** How many pieces of this product are in the order, across all its lines and add-ons. */
     public int quantityOf(Product product) {
-        return lines.stream()
-            .filter(line -> line.getProduct().equals(product))
-            .mapToInt(OrderLine::getQuantity)
-            .sum();
+        return lines.stream().mapToInt(line -> line.countOf(product)).sum();
     }
 
     /** The running total of every line. */
@@ -92,35 +111,21 @@ public class Cart implements Prototype<Cart> {
 
     /**
      * Lowers quantities to what is in stock right now and drops lines that
-     * ran out. Earlier lines of a product get the stock first.
+     * ran out. Earlier lines get the stock first.
      */
     public void trimToStock() {
-        Map<Product, Integer> remaining = new HashMap<>();
+        Map<Product, Integer> left = new HashMap<>();
         boolean changed = false;
         for (Iterator<OrderLine> it = lines.iterator(); it.hasNext(); ) {
             OrderLine line = it.next();
-            int left = remaining.computeIfAbsent(line.getProduct(), Inventory::getStock);
-            if (left <= 0) {
+            changed |= line.trimTo(left);
+            if (line.getQuantity() == 0) {
                 it.remove();
-                changed = true;
-                continue;
             }
-            if (line.getQuantity() > left) {
-                line.setQuantity(left);
-                changed = true;
-            }
-            remaining.put(line.getProduct(), left - line.getQuantity());
         }
         if (changed) {
             fireChanged();
         }
-    }
-
-    /** Commits an edited copy back into this cart. */
-    public void replaceWith(Cart source) {
-        lines.clear();
-        source.lines.forEach(line -> lines.add(line.copy()));
-        fireChanged();
     }
 
     /** Runs the given action every time the contents of this cart change. */

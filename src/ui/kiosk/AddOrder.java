@@ -1,36 +1,28 @@
 package ui.kiosk;
 
 import java.awt.*;
+import java.util.List;
 import javax.swing.*;
-import util.Cart;
-import util.Inventory;
-import util.Product;
+import util.*;
 
 /**
  * "Add Something Extra to Your Meal": shows the tapped product, lets the
- * customer pick a quantity and puts it into the cart.
+ * customer pick a quantity, extras and favorites, and puts the result into the
+ * cart as a new line.
  *
- * The shared layout and quantity logic live in {@link QuantityPage}; this
- * class only fills in what is different about adding a new meal.
- *
+ * The shared layout and rules live in {@link QuantityPage}; this class only
+ * fills in what is different about adding a new meal.
  * Editing a meal that is already in the order is handled by {@link EditOrder}.
  */
 public class AddOrder extends QuantityPage {
 
-    public AddOrder(Product product, Cart cart, Runnable onSaved, Runnable onCancel) {
-        super(product, null, cart, onSaved, onCancel);
+    public AddOrder(Product product, Cart cart, List<Product> extras, List<Product> favorites,
+                    Runnable onSaved, Runnable onCancel) {
+        super(new OrderLine(product, 1), cart, extras, favorites, onSaved, onCancel);
     }
 
-    @Override protected String pageTitle() {
-        return "<html>Add Something Extra<br>to Your Meal</html>";
-    }
-
-    /**
-     * The most the customer can add: what is in stock, minus what is already
-     * in the order.
-     */
-    @Override protected int maxQuantity() {
-        return Math.max(1, Inventory.getAvailable(product, cart));
+    @Override protected String[] titleLines() {
+        return new String[] {"Add Something Extra", "to Your Meal"};
     }
 
     @Override protected String saveButtonPrefix() {
@@ -39,21 +31,14 @@ public class AddOrder extends QuantityPage {
 
     /** Always a new line, even if the product is already in the order. */
     @Override protected void commitOrder() {
-        cart.add(product, quantity);
-    }
-
-    /** Nothing extra under the placeholder sections. */
-    @Override protected void addDetailsFooter(JPanel details) {
-        details.add(Box.createVerticalGlue());
+        cart.add(work);
     }
 
     /** Cancel on the left, the orange "Add to Order" button on the right. */
-    @Override protected JPanel buildButtons() {
-        JPanel buttons = new JPanel(new GridLayout(1, 2, 12, 0));
-        buttons.setOpaque(false);
-        buttons.setPreferredSize(new Dimension(0, 56));
+    @Override protected FadeablePanel buildButtons() {
+        FadeablePanel buttons = buttonBar(new GridLayout(1, 2, 12, 0), 56);
 
-        JButton cancel = createCancelButton("Cancel Order");
+        JButton cancel = createOutlineButton("Cancel Order", UiColors.BROWN);
         cancel.addActionListener(e -> cancel());
 
         saveButton = createSaveButton();

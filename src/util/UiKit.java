@@ -7,7 +7,6 @@ import java.awt.Container;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.Image;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -47,26 +46,38 @@ public final class UiKit {
         String key = path + "|" + width + "x" + height;
         ImageIcon cached = ICONS.get(key);
         if (cached == null) {
-            cached = new ImageIcon(scale(new ImageIcon(path).getImage(), width, height));
+            cached = new ImageIcon(scale(new ImageIcon(path), width, height));
             ICONS.put(key, cached);
         }
         return cached;
     }
 
     /**
-     * Draws the picture into real pixels once.
+     * Draws the picture into real pixels once, fitted inside width x height.
+     * The picture keeps its proportions and is centred, so it is never
+     * stretched; the icon itself always has exactly the size asked for.
      *
      * getScaledInstance keeps its result in a soft reference instead: whenever
      * memory gets tight (which fades, with their temporary buffers, provoke)
      * it throws the pixels away and re-runs the slow scaling on the next
      * paint - the classic cause of an animation that stutters and jumps.
      */
-    private static BufferedImage scale(Image image, int width, int height) {
+    private static BufferedImage scale(ImageIcon source, int width, int height) {
         BufferedImage scaled = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        int sourceWidth = source.getIconWidth();
+        int sourceHeight = source.getIconHeight();
+        if (sourceWidth <= 0 || sourceHeight <= 0) {
+            return scaled;                           // missing picture: leave it blank
+        }
+        double ratio = Math.min(width / (double) sourceWidth, height / (double) sourceHeight);
+        int drawnWidth = (int) Math.round(sourceWidth * ratio);
+        int drawnHeight = (int) Math.round(sourceHeight * ratio);
+
         Graphics2D g2 = scaled.createGraphics();
         g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
         g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-        g2.drawImage(image, 0, 0, width, height, null);
+        g2.drawImage(source.getImage(), (width - drawnWidth) / 2, (height - drawnHeight) / 2,
+            drawnWidth, drawnHeight, null);
         g2.dispose();
         return scaled;
     }

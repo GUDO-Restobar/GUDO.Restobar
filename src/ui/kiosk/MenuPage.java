@@ -36,9 +36,9 @@ public class MenuPage extends JPanel {
     private static final String TRACK = "public/assets/scrollbar/scroll-track.png";
 
     /** Sections shown in the sidebar and in the scrolling list, in order. */
-    private static final String[] CATEGORY_NAMES  = {"Meals", "Snacks", "Drinks"};
+    private static final String[] CATEGORY_NAMES  = {"Meals", "Snacks", "Drinks", "Extras"};
     private static final String[] CATEGORY_IMAGES = {
-        IMG + "quiburger.png", IMG + "4-pillar-fries.png", IMG + "jandro-cola.png"
+        IMG + "quiburger.png", IMG + "4-pillar-fries.png", IMG + "jandro-cola.png", IMG + "extra-rice.png"
     };
 
     private final Font bold = UiKit.font("Montserrat/static/Montserrat-Bold.ttf");
@@ -121,6 +121,31 @@ public class MenuPage extends JPanel {
         resetIntro();               // nothing animated is visible before the first show
     }
 
+    // ------------------------------------------------------------
+    // Menu data shared with the Add / Edit Order pages
+    // ------------------------------------------------------------
+
+    /** The Extras-category items the order pages offer as paid add-ons. */
+    public List<Product> getExtras() {
+        return menu.getOrDefault("Extras", List.of());
+    }
+
+    /** The three Gudo's Favorites shown under every meal. */
+    public List<Product> getFavorites() {
+        String[] names = {"Quiburger", "LinkedHash Brown", "Java Milkshake"};
+        List<Product> picked = new ArrayList<>();
+        for (String name : names) {
+            for (List<Product> products : menu.values()) {
+                for (Product product : products) {
+                    if (product.getName().equals(name)) {
+                        picked.add(product);
+                    }
+                }
+            }
+        }
+        return picked;
+    }
+
     /** Banner on top, the product list in the middle, the total bar at the bottom. */
     private JPanel buildContent() {
         JPanel content = new JPanel(new BorderLayout());
@@ -130,7 +155,7 @@ public class MenuPage extends JPanel {
         return content;
     }
 
-    /** The orange rail with the logo and the three category tabs. */
+    /** The orange rail with the logo and the category tabs. */
     private JPanel buildSidebar() {
         JPanel sidebar = new JPanel(new BorderLayout());
         sidebar.setBackground(UiColors.ORANGE);
