@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import util.Cart;
 import util.OrderLine;
+import util.Product;
 
 /**
  * Saves a finished order: CUSTOMER_ORDER, ORDER_DETAIL and PAYMENT rows, and
@@ -43,13 +44,35 @@ public final class OrderDAO {
         + "VALUES (CURDATE(), CURTIME(), ?, ?, 'Paid', 'Preparing')";
 
     private static final String INSERT_DETAIL =
-        "INSERT INTO ORDER_DETAIL (orderID, itemID, quantity, price) VALUES (?, ?, ?, ?)";
+        "INSERT INTO ORDER_DETAIL (orderID, itemID, quantity, price, wantWater, wantUtensils) "
+        + "VALUES (?, ?, ?, ?, ?, ?)";
+
+    /** One ORDER_DETAIL row: a meal, extra or favorite of an order line, with that line's water / cutlery choice. */
+    private record Row(Product product, int quantity, boolean water, boolean utensils) {
+        BigDecimal price() {
+            return BigDecimal.valueOf(product.getPrice());
+        }
+    }
 
     private static final String INSERT_PAYMENT =
         "INSERT INTO PAYMENT (orderID, method, transactionStatus, amount, paymentDate) "
         + "VALUES (?, ?, 'Successful', ?, CURDATE())";
 
     private OrderDAO() {}
+
+    /** Every meal, extra and favorite in the cart as one row each; the water / cutlery choice goes on the meal's row. */
+    private static List<Row> rows(Cart cart) {
+        List<Row> rows = new ArrayList<>();
+        for (OrderLine line : cart.getLines()) {
+            boolean meal = true;
+            for (var piece : line.pieces().entrySet()) {
+                rows.add(new Row(piece.getKey(), piece.getValue(),
+                    meal && line.isWater(), meal && line.isCutlery()));
+                meal = false;
+            }
+        }
+        return rows;
+    }
 
     /**
      * @param orderType     "Dine-in" or "Takeout"
@@ -59,7 +82,7 @@ public final class OrderDAO {
     public static int saveOrder(Cart cart, String orderType, String paymentMethod)
             throws SQLException, OutOfStockException {
 
-        List<OrderLine> items = new ArrayList<>(cart.getLines());
+        List<Row> items = rows(cart);
         if (items.isEmpty()) {
             throw new IllegalArgumentException("The order is empty.");
         }
@@ -69,9 +92,8 @@ public final class OrderDAO {
         String method = "Cashless".equalsIgnoreCase(paymentMethod) ? "Cashless" : "Cash";
 
         BigDecimal total = BigDecimal.ZERO;
-        for (OrderLine line : items) {
-            total = total.add(BigDecimal.valueOf(line.getProduct().getPrice())
-                .multiply(BigDecimal.valueOf(line.getQuantity())));
+        for (Row row : items) {
+            total = total.add(row.price().multiply(BigDecimal.valueOf(row.quantity())));
         }
 
         try (Connection conn = dbconnect.getConnection()) {
@@ -79,14 +101,13 @@ public final class OrderDAO {
             try {
                 // 1) Take the items out of stock. Fails if someone else bought them first.
                 try (PreparedStatement stock = conn.prepareStatement(DECREASE_STOCK)) {
-                    for (OrderLine line : items) {
-                        int quantity = line.getQuantity();
-                        stock.setInt(1, quantity);
-                        stock.setInt(2, quantity);
-                        stock.setInt(3, line.getProduct().getItemID());
-                        stock.setInt(4, quantity);
+                    for (Row row : items) {
+                        stock.setInt(1, row.quantity());
+                        stock.setInt(2, row.quantity());
+                        stock.setInt(3, row.product().getItemID());
+                        stock.setInt(4, row.quantity());
                         if (stock.executeUpdate() == 0) {
-                            throw new OutOfStockException(line.getProduct().getName());
+                            throw new OutOfStockException(row.product().getName());
                         }
                     }
                 }
@@ -106,13 +127,15 @@ public final class OrderDAO {
                     }
                 }
 
-                // 3) One ORDER_DETAIL row per item (subTotal is calculated by MySQL).
+                // 3) One ORDER_DETAIL row per meal, extra and favorite (subTotal is calculated by MySQL).
                 try (PreparedStatement detail = conn.prepareStatement(INSERT_DETAIL)) {
-                    for (OrderLine line : items) {
+                    for (Row row : items) {
                         detail.setInt(1, orderID);
-                        detail.setInt(2, line.getProduct().getItemID());
-                        detail.setInt(3, line.getQuantity());
-                        detail.setBigDecimal(4, BigDecimal.valueOf(line.getProduct().getPrice()));
+                        detail.setInt(2, row.product().getItemID());
+                        detail.setInt(3, row.quantity());
+                        detail.setBigDecimal(4, row.price());
+                        detail.setBoolean(5, row.water());
+                        detail.setBoolean(6, row.utensils());
                         detail.addBatch();
                     }
                     detail.executeBatch();

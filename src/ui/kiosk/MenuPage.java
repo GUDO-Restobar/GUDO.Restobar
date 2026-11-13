@@ -36,9 +36,9 @@ public class MenuPage extends JPanel {
     private static final String TRACK = "public/assets/scrollbar/scroll-track.png";
 
     /** Sections shown in the sidebar and in the scrolling list, in order. */
-    private static final String[] CATEGORY_NAMES  = {"Meals", "Snacks", "Drinks"};
+    private static final String[] CATEGORY_NAMES  = {"Meals", "Snacks", "Drinks", "Extras"};
     private static final String[] CATEGORY_IMAGES = {
-        IMG + "quiburger.png", IMG + "4-pillar-fries.png", IMG + "jandro-cola.png"
+        IMG + "quiburger.png", IMG + "4-pillar-fries.png", IMG + "jandro-cola.png", IMG + "extra-rice.png"
     };
 
     private final Font bold = UiKit.font("Montserrat/static/Montserrat-Bold.ttf");
@@ -155,7 +155,7 @@ public class MenuPage extends JPanel {
         return content;
     }
 
-    /** The orange rail with the logo and the three category tabs. */
+    /** The orange rail with the logo and the category tabs. */
     private JPanel buildSidebar() {
         JPanel sidebar = new JPanel(new BorderLayout());
         sidebar.setBackground(UiColors.ORANGE);

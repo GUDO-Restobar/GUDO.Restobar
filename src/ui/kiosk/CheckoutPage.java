@@ -343,14 +343,11 @@ public class CheckoutPage extends JPanel {
         refreshCenter();
     }
 
-    /** One line of the order: picture, quantity controls, edit and remove. */
+    /** One line of the order: picture, quantity controls, add-ons, edit and remove. */
     private OrderItemCard buildCard(OrderLine line) {
         OrderItemCard card = new OrderItemCard(
-            line.getProduct(),
-            line.getQuantity(),
+            line,
             () -> cart.maxQuantity(line),
-            line.getExtras(),
-            line.getFavorites(),
             newQuantity -> {
                 // The + / - circles change the real cart, so the Menu total stays in sync too.
                 cart.setQuantity(line, newQuantity);
