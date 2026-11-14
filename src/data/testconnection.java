@@ -1,4 +1,6 @@
 package data;
+
+import data.java.dbconnect;
 import java.sql.*;
 
 public class testconnection {

@@ -32,7 +32,7 @@ if exist bin rmdir /s /q bin
 mkdir bin
 
 echo Compiling...
-javac --release 17 -encoding UTF-8 --module-path "%FXLIB%" --add-modules %FXMODS% -cp "%JARS%" -d bin src\*.java src\data\*.java src\ui\kiosk\*.java src\ui\manager\*.java src\util\*.java
+javac --release 17 -encoding UTF-8 --module-path "%FXLIB%" --add-modules %FXMODS% -cp "%JARS%" -d bin src\*.java src\data\*.java src\data\java\*.java src\pages\kiosk\*.java src\pages\manager\*.java src\util\ui\*.java src\util\feat\*.java
 if errorlevel 1 (
     echo.
     echo COMPILE FAILED - see the errors above.
