@@ -2,9 +2,10 @@ import java.awt.*;
 import java.sql.SQLException;
 import java.util.concurrent.ExecutionException;
 import javax.swing.*;
-import data.OrderDAO;
-import ui.kiosk.*;
-import util.*;
+import data.java.OrderDAO;
+import pages.kiosk.*;
+import util.feat.*;
+import util.ui.*;
 
 /**
  * The kiosk window.
@@ -413,7 +414,7 @@ public class KioskMain extends JFrame {
                 e.printStackTrace();
                 JOptionPane.showMessageDialog(null,
                     "The kiosk could not connect to the database.\n"
-                        + "Make sure MySQL is running and the login in data/dbconnect.java is correct.\n\n"
+                        + "Make sure MySQL is running and the login in data/java/dbconnect.java is correct.\n\n"
                         + e.getMessage(),
                     "Database error", JOptionPane.ERROR_MESSAGE);
                 System.exit(1);

@@ -2,11 +2,11 @@ import java.awt.*;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.swing.*;
-import ui.manager.EditStockItems;
-import static ui.manager.ManagerTheme.*;
-import ui.manager.OrderHistory;
-import ui.manager.SalesSummary;
-import util.UiColors;
+import pages.manager.EditStockItems;
+import static pages.manager.ManagerTheme.*;
+import pages.manager.OrderHistory;
+import pages.manager.SalesSummary;
+import util.ui.UiColors;
 
 /**
  * Manager window. The LEFT side is the sidebar (logo + tabs) and lives here.
