@@ -3,6 +3,7 @@ package ui.kiosk;
 // ============================================================
 // IMPORTS
 // ============================================================
+import data.MenuItemDAO;
 import java.awt.*;
 import java.awt.event.HierarchyEvent;
 import java.awt.event.MouseAdapter;
@@ -13,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import javax.swing.*;
-import data.MenuItemDAO;
 import util.*;
 
 /**
@@ -233,12 +233,27 @@ public class MenuPage extends JPanel {
         return scrollPane;
     }
 
-    /** Highlights the category tab of the section currently at the top of the list. */
+    /**
+     * Highlights the category tab of the section currently being looked at.
+     *
+     * A section counts as focused once its top passes an invisible "reading
+     * line". The line starts at the top of the viewport and slides down to the
+     * bottom edge as the list is scrolled to its end. This way the last
+     * sections (e.g. Extras), which are too short to ever reach the top of
+     * the viewport, still become active when the customer scrolls down to them.
+     */
     private void updateActiveCategory() {
-        int viewY = scrollPane.getViewport().getViewPosition().y;
+        JViewport viewport = scrollPane.getViewport();
+        int viewY = viewport.getViewPosition().y;
+        int viewHeight = viewport.getExtentSize().height;
+        int maxScroll = viewport.getViewSize().height - viewHeight;
+
+        double progress = maxScroll > 0 ? Math.min(1.0, (double) viewY / maxScroll) : 0;
+        int readingLine = viewY + (int) Math.round(progress * viewHeight);
+
         int active = 0;
         for (int i = 0; i < sections.length; i++) {
-            if (sections[i] != null && sections[i].getY() <= viewY + 10) {
+            if (sections[i] != null && sections[i].getY() <= readingLine + 10) {
                 active = i;
             }
         }
