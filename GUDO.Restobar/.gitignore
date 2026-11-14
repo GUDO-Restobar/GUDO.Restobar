@@ -1,0 +1,13 @@
+/out/
+/build/
+/target/
+/dist/
+/nbproject/private/
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Build output - never commit compiled files
+/bin/
+*.class
