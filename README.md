@@ -1,5 +1,13 @@
 # GUDO Restobar
 
+### Final Project for Object-Oriented Programming and Information Management, BS Computer Science - 2nd Year
+
+Object-Oriented Programming Grades:
+Final Defense: 100/100
+
+Information Management Grades:
+80/100
+
 Kiosk + manager desktop app - Java Swing, MySQL, and JavaFX (videos).
 
 ## Requirements
