@@ -1,14 +1,12 @@
-# GUDO Restobar
+# Gudo Restobar
+#### Self-service ordering kiosk and manager dashboard for Gudo Restobar — a Java Swing desktop app backed by MySQL, with JavaFX for the intro and order animations.
+---
 
 ### Final Project for Object-Oriented Programming and Information Management, BS Computer Science - 2nd Year
 
-Object-Oriented Programming Grades:
-Final Defense: 100/100
+#### Object-Oriented Programming Grades: Final Defense: `100/100`
 
-Information Management Grades:
-80/100
-
-Self-service ordering kiosk and manager dashboard for Gudo Restobar — a Java Swing desktop app backed by MySQL, with JavaFX for the intro and order animations.
+#### Information Management Grades: `80/100`
 
 ## The Purpose
 
