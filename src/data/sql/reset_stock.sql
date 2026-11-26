@@ -1,5 +1,5 @@
 -- Puts every product back to 20 in stock and available (run on the existing database).
-USE gudorestobardb;
+USE defaultdb;
 
 UPDATE MENU_ITEM
 SET stockQuantity = 10,

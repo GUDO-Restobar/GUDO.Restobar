@@ -1,13 +1,8 @@
--- SQLBook: Code
--- Active: 1789518258812@@127.0.0.1@3306@defaultdb18258812@@127.0.0.1@3306@gudorestobardb18258812@@127.0.0.1@3306@gudorestobardb18258812@@127.0.0.1@3306@gudorestobardb04365560@@mysql-27a36514-gudorestobar.b.aivencloud.com@24673@defaultdb
+-- Active: 1789518258812@@127.0.0.1@3306@defaultdb
+-- Create the schema used by dbconnect.java and the application's .env DB_URL.
+CREATE DATABASE IF NOT EXISTS hatdogdb;
 
--- THIS DATABASE SQL FILE IS CONNECTED TO THE CLOUD DATABASE
--- Task 4: Create database
-CREATE DATABASE IF NOT EXISTS defaultdb;
-
-USE defaultdb;
---defaultdb for cloud
---gudorestobardb for localhost
+USE hatdogdb;
 
 -- only use for emergencies
 -- DROP TABLE PAYMENT;
