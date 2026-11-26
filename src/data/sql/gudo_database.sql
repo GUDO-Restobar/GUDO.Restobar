@@ -1,8 +1,8 @@
 -- Active: 1789518258812@@127.0.0.1@3306@defaultdb
 -- Create the schema used by dbconnect.java and the application's .env DB_URL.
-CREATE DATABASE IF NOT EXISTS hatdogdb;
+CREATE DATABASE IF NOT EXISTS gudorestobardb;
 
-USE hatdogdb;
+USE gudorestobardb;
 
 -- only use for emergencies
 -- DROP TABLE PAYMENT;
