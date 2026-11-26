@@ -7,6 +7,9 @@
 *.iml
 .vscode/
 .DS_Store
+.env
+.env.*
+!.env.example
 
 # Build output - never commit compiled files
 /bin/
